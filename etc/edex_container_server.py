@@ -7,18 +7,22 @@ from concurrent import futures
 import socket
 import asyncio
 import pathlib
+import sys
+import yaml
 
 class AWIPSHandler():
-    def __init__(self):
+    def __init__(self, trigger_port=6000, server_port=6001, client_port=6002):
         # setup trigger event handler
         self.host = 'localhost'
-        self.port = 6969
+        self.trigger_port = trigger_port
+        self.server_port = server_port
+        self.client_port = client_port
 
         # setup pygcdm stuff
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
-        self.server.add_insecure_port(f'{self.host}:1234')
-        self.request_handler = Requester(self.host, self.port)
+        self.server.add_insecure_port(f'{self.host}:{self.server_port}')
+        self.request_handler = Requester(self.host, self.client_port)
 
         # start server/trigger
         asyncio.run(self.pygcdm_server_start())
@@ -47,7 +51,7 @@ class AWIPSHandler():
     async def trigger_listen(self):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind((self.host, self.port))
+            s.bind((self.host, self.trigger_port))
             s.listen()
             conn, addr = s.accept()
             with conn:
@@ -83,8 +87,8 @@ class Responder(grpc_server.GcdmServicer):
 
 class Requester():
     def __init__(self, host, port):
-        self.host = 'localhost'
-        self.port = 1234
+        self.host = host
+        self.port = port
         self.loc = 'data/test.nc'
         self.variable_spec = 'analysed_sst'
 
@@ -106,14 +110,22 @@ class Requester():
 
 if __name__ == '__main__':
     print("starting AWIPSHandler")
-    AWIPSHandler()
+    handler_type = sys.argv[1]
+    with open("config.yaml") as file:
+        config_dict = yaml.load(file, Loader=yaml.FullLoader)
+    try: 
+        assert handler_type in ["tf_container", "edex_container"]
+    except AssertionError:
+        raise SyntaxError("incorrect input argument; options are \"tf_container\" or \"edex_container\"")
+
+    AWIPSHandler(**config_dict[handler_type])
 
 
 """ to send messages use the following function (Imake sure ports match)
 ```
-def send(msg):
+def send(msg, port):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.connect(('127.0.0.1', 6969))
+        s.connect(('127.0.0.1', port))
         s.sendall(bytes(msg, 'utf-8'))
         data = s.recv(1024)
         print(data)

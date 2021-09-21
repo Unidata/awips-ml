@@ -25,7 +25,7 @@ class Responder(grpc_server.GcdmServicer):
 def server():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     grpc_server.add_GcdmServicer_to_server(Responder(), server)
-    server.add_insecure_port('[::]:42069')
+    server.add_insecure_port('[::]:6002')
     print('starting server...')
     server.start()
     server.wait_for_termination()

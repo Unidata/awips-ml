@@ -1,20 +1,20 @@
 version: "3"
 services:
-  client:
-    container_name: client
+  tf:
+    container_name: tfc
     build: .
     tty: true
-    container_name: client
     networks: 
       - pygcdm-net
+    command: bash -c "python edex_container_server.py tf_container"
 
-  server:
-    container_name: client
+  edex:
+    container_name: edexc
     build: .
     tty: true
-    container_name: server
     networks: 
       - pygcdm-net
+    command: bash -c "python edex_container_server.py edex_container"
 networks:
   pygcdm-net:
     name: pygcdm-net
