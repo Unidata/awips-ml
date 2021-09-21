@@ -1,0 +1,21 @@
+version: "3"
+services:
+  client:
+    container_name: client
+    build: .
+    tty: true
+    container_name: client
+    networks: 
+      - pygcdm-net
+
+  server:
+    container_name: client
+    build: .
+    tty: true
+    container_name: server
+    networks: 
+      - pygcdm-net
+networks:
+  pygcdm-net:
+    name: pygcdm-net
+
