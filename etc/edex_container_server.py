@@ -11,9 +11,9 @@ import sys
 import yaml
 
 class AWIPSHandler():
-    def __init__(self, trigger_port=6000, server_port=6001, client_port=6002):
+    def __init__(self, trigger_port=6000, server_port=6001, client_port=6002, host="localhost"):
         # setup trigger event handler
-        self.host = 'localhost'
+        self.host = host
         self.trigger_port = trigger_port
         self.server_port = server_port
         self.client_port = client_port

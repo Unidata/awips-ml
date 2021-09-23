@@ -2,7 +2,9 @@ edex_container:
   client_port: 6002
   server_port: 6001
   trigger_port: 6000
+  host: edexc
 tf_container:
   client_port: 6001
   server_port: 6002
   trigger_port: 7000
+  host: tfc
