@@ -11,41 +11,41 @@ import sys
 import yaml
 
 class AWIPSHandler():
-    def __init__(self, trigger_port=6000, server_port=6001, client_port=6002, host="localhost"):
+    def __init__(self, trigger_port=6000, server_port=6001, client_port=6002, host="localhost", pygcdm_client="localhost", pygcdm_server="localhost"):
         # setup trigger event handler
-        self.host = host
         self.trigger_port = trigger_port
         self.server_port = server_port
         self.client_port = client_port
+        self.host = host
+        self.pygcdm_client = pygcdm_client
+        self.pygcdm_server = pygcdm_server
 
         # setup pygcdm stuff
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
-        self.server.add_insecure_port(f'{self.host}:{self.server_port}')
-        self.request_handler = Requester(self.host, self.client_port)
+        self.server.add_insecure_port(f'{self.pygcdm_client}:{self.server_port}')
+        self.request_handler = Requester(self.pygcdm_server, self.client_port)
 
         # start server/trigger
-        asyncio.run(self.pygcdm_server_start())
-
-    async def pygcdm_server_start(self):
         print('starting server...')
         self.server.start()
-        while True:
-            trigger = asyncio.create_task(self.trigger_listen())
-            await trigger
-            command = trigger.result()
-            if command == "stop":
-                print('stopping server based on remote command')
-                self.server.stop(0)
-                break
-            elif command == "bad_path":
-                print('bad path received; ignoring')
-                pass
-            else:
-                if pathlib.Path(command).is_file():
-                    print("requested file: ", command)
-                    requested_data = self.request_handler.request_data()
-                    print(requested_data)
+        while True:  # BONE this should handle stop command
+            asyncio.run(self.pygcdm_server_run())
+
+    async def pygcdm_server_run(self):
+        trigger = asyncio.create_task(self.trigger_listen())
+        await trigger
+        command = trigger.result()
+        if command == "stop":
+            print('stopping server based on remote command')
+            self.server.stop(0)
+        elif command == "bad_path":
+            print('bad path received; ignoring')
+        else:
+            if pathlib.Path(command).is_file():
+                print("requested file: ", command)
+                requested_data = self.request_handler.request_data()
+                print(requested_data)
 
 
     async def trigger_listen(self):
