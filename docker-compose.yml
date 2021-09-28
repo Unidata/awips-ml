@@ -2,19 +2,36 @@ version: "3"
 services:
   tf:
     container_name: tfc
-    build: .
+    build:
+      context: .
+      dockerfile: ./tfc/Dockerfile
     tty: true
     networks: 
       - pygcdm-net
-    command: bash -c "python edex_container_server.py tf_container"
+    command: python edex_container_server.py tf_container
 
   edex:
     container_name: edexc
-    build: .
+    build:
+      context: .
+      dockerfile: ./edexc/Dockerfile
+    privileged: true
+    ports:
+      - 9581:9581
+      - 9582:9582
+      - 388:388
     tty: true
     networks: 
       - pygcdm-net
-    command: bash -c "python edex_container_server.py edex_container"
+        #entrypoint: ["bash", "edex start"]
+        entrypoint: ["/usr/sbin/init"]
+    command: bash -c "
+        source /root/.bashrc
+        && cd awips-ml
+        && conda activate grpc_env
+        && python edex_container_server.py edex_container
+        "
+
 networks:
   pygcdm-net:
     name: pygcdm-net

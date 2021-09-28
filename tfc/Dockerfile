@@ -9,4 +9,4 @@ RUN apt-get install -y iputils-ping
 RUN apt-get install -y iproute2
 RUN apt-get install -y vim
 COPY /etc/* /
-COPY /etc/data/test.nc /data/test.nc
+COPY /common/* /

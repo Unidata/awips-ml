@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<registry>
+  <delete-info-files>0</delete-info-files>
+  <hostname>riotest.docker</hostname>
+  <insertion-check-interval>300</insertion-check-interval>
+  <reconciliation-mode>do nothing</reconciliation-mode>
+  <check-time>
+    <enabled>1</enabled>
+    <limit>10</limit>
+    <warn-if-disabled>1</warn-if-disabled>
+    <ntpdate>
+      <command>ntpdate</command>
+      <servers>ntp.ucsd.edu ntp1.cs.wisc.edu ntppub.tamu.edu otc1.psu.edu pool.ntp.org</servers>
+      <timeout>5</timeout>
+    </ntpdate>
+  </check-time>
+  <log>
+    <count>7</count>
+    <file>/awips2/ldm/var/logs/ldmd.log</file>
+    <rotate>1</rotate>
+  </log>
+  <metrics>
+    <count>4</count>
+    <file>/awips2/ldm/var/logs/metrics.txt</file>
+    <files>/awips2/ldm/var/logs/metrics.txt*</files>
+    <netstat-command>/bin/netstat -A inet -t -n</netstat-command>
+    <top-command>/bin/top -b -n 1</top-command>
+  </metrics>
+  <pqact>
+    <config-path>/awips2/ldm/etc/pqact.conf</config-path>
+    <datadir-path>/awips2/ldm/var/data</datadir-path>
+  </pqact>
+  <pqsurf>
+    <config-path>/awips2/ldm/etc/pqsurf.conf</config-path>
+    <datadir-path>/awips2/ldm/var/data</datadir-path>
+  </pqsurf>
+  <queue>
+    <path>/awips2/ldm/var/queues/ldm.pq</path>
+    <size>2500M</size>
+    <slots>default</slots>
+  </queue>
+  <scour>
+    <config-path>/awips2/ldm/etc/scour.conf</config-path>
+  </scour>
+  <server>
+    <config-path>/awips2/ldm/etc/ldmd.conf</config-path>
+    <ip-addr>0.0.0.0</ip-addr>
+    <max-clients>256</max-clients>
+    <max-latency>3600</max-latency>
+    <port>388</port>
+    <time-offset>3600</time-offset>
+    <enable-anti-DOS>TRUE</enable-anti-DOS>
+  </server>
+  <surf-queue>
+    <path>/awips2/ldm/var/queues/pqsurf.pq</path>
+    <size>2M</size>
+  </surf-queue>
+  <oess-pathname>/awips2/ldm/etc/OESS-account.yaml</oess-pathname>
+</registry>

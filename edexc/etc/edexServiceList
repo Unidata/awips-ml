@@ -1,0 +1,2 @@
+#generated on Tue Jul 27 15:14:46 UTC 2021
+export SERVICES=('ingest' 'request')
