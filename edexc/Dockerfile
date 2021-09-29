@@ -7,7 +7,7 @@ ENV HOME /root
 ENV WORKDIR /root
 
 # install AWIPS pre-reqs
-RUN yum -y install sudo wget perl less rsync
+RUN yum -y install sudo wget perl less rsync vim
 
 # do awips install
 RUN wget https://www.unidata.ucar.edu/software/awips2/awips_install.sh \
@@ -29,21 +29,18 @@ RUN . /root/.bashrc \
     && pip install pyyaml
 
 # load in config files
-COPY /edexc/etc/ldmd.conf /awips2/ldm/etc/ldmd.conf
-COPY /edexc/etc/setup.env /awips2/edex/bin/setup.env
-COPY /edexc/etc/edexServiceList /etc/rc.d/init.d/edexServiceList
-COPY /edexc/etc/registry.xml /awips2/ldm/etc/registry.xml
-
-COPY /edexc/etc/pqact.conf /awips2/ldm/etc/pqact.conf
-COPY /edexc/etc/test.sh /tmp/test.sh
-RUN chmod 755 /tmp/test.sh
+COPY /edexc/etc/conf/ldmd.conf /awips2/ldm/etc/ldmd.conf
+COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
+COPY /edexc/etc/conf/edexServiceList /etc/rc.d/init.d/edexServiceList
+COPY /edexc/etc/conf/registry.xml /awips2/ldm/etc/registry.xml
+COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 
 # load in edex server stuff
 RUN cd / \
-    && mkdir /awips-ml
-COPY /edexc/etc/edex_container_server.py /awips-ml/edex_container_server.py
-COPY /common/config.yaml /awips-ml/config.yaml
-COPY /common/trigger.py /awips-ml/trigger.py
+    && mkdir /dockerconf
+COPY /edexc/etc/scripts/edex_container_server.py /dockerconf/edex_container_server.py
+COPY /common/config.yaml /dockerconf/config.yaml
+COPY /common/trigger.py /dockerconf/trigger.py
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker
@@ -66,7 +63,10 @@ RUN export LD_LIBRARY_PATH=/usr/lib:/lib:/usr/lib64:/lib64
 # create empty network file
 RUN touch /etc/sysconfig/network
 
-# remove systemd config file that causes it to hang
+# copy in custom service script (this will run on init)
+RUN mkdir -p /etc/systemd/system/multi-user.target.wants/
+COPY /edexc/etc/conf/edex_start.service /etc/systemd/system/edex_start.service
+COPY /edexc/etc/conf/edex_start.service /etc/systemd/system/multi-user.target.wants/edex_start.service
 
 # cleanup awips_install script
 RUN rm awips_install.sh

@@ -23,18 +23,7 @@ services:
     tty: true
     networks: 
       - pygcdm-net
-        #entrypoint: ["/usr/sbin/init"]
-    entrypoint: ["/bin/bash"]
-        #command: ["echo fart"]
-      #command: ["/usr/sbin/init", "edex start", "bash"]
-        #    entrypoint: ["/usr/sbin/init", "bin/bash echo 'systemd init completed'"]
-        #    command: bash -c "
-        #        edex start
-        #        && source /root/.bashrc
-        #        && cd awips-ml
-        #        && conda activate grpc_env
-        #        && python edex_container_server.py edex_container
-        #        "
+    command: ["/usr/sbin/init"]
 
 networks:
   pygcdm-net:
