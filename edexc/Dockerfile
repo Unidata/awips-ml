@@ -37,10 +37,10 @@ COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 
 # load in edex server stuff
 RUN cd / \
-    && mkdir /dockerconf
-COPY /edexc/etc/scripts/edex_container_server.py /dockerconf/edex_container_server.py
-COPY /common/config.yaml /dockerconf/config.yaml
-COPY /common/trigger.py /dockerconf/trigger.py
+    && mkdir /scripts
+COPY /edexc/etc/scripts/edex_container_server.py /scripts/edex_container_server.py
+COPY /common/config.yaml /scripts/config.yaml
+COPY /common/trigger.py /scripts/trigger.py
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker
@@ -63,10 +63,14 @@ RUN export LD_LIBRARY_PATH=/usr/lib:/lib:/usr/lib64:/lib64
 # create empty network file
 RUN touch /etc/sysconfig/network
 
-# copy in custom service script (this will run on init)
+# copy in custom service scripts (this will run on init)
 RUN mkdir -p /etc/systemd/system/multi-user.target.wants/
-COPY /edexc/etc/conf/edex_start.service /etc/systemd/system/edex_start.service
-COPY /edexc/etc/conf/edex_start.service /etc/systemd/system/multi-user.target.wants/edex_start.service
+COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/edex_start.service
+COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/multi-user.target.wants/edex_start.service
+COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_start.service
+COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
+COPY /edexc/etc/systemd/listener_start.sh /scripts/listener_start.sh
+RUN chmod 755 /scripts/listener_start.sh
 
 # cleanup awips_install script
 RUN rm awips_install.sh

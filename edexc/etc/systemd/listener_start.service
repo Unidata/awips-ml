@@ -1,0 +1,9 @@
+[Unit]
+Description=Start edex server listener service
+
+[Service]
+Type=simple
+ExecStart=/scripts/listener_start.sh
+
+[Install]
+WantedBy=multi-user.target
