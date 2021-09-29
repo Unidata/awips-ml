@@ -45,6 +45,19 @@ COPY /edexc/etc/edex_container_server.py /awips-ml/edex_container_server.py
 COPY /common/config.yaml /awips-ml/config.yaml
 COPY /common/trigger.py /awips-ml/trigger.py
 
+# remove some systemd stuff per https://hub.docker.com/_/centos/
+ENV container docker
+RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
+systemd-tmpfiles-setup.service ] || rm -f $i; done); \
+rm -f /lib/systemd/system/multi-user.target.wants/*;\
+rm -f /etc/systemd/system/*.wants/*;\
+rm -f /lib/systemd/system/local-fs.target.wants/*; \
+rm -f /lib/systemd/system/sockets.target.wants/*udev*; \
+rm -f /lib/systemd/system/sockets.target.wants/*initctl*; \
+rm -f /lib/systemd/system/basic.target.wants/*;\
+rm -f /lib/systemd/system/anaconda.target.wants/*; \
+rm -f /lib/systemd/system/serial-getty\@.service;
+VOLUME [ "/sys/fs/cgroup" ]
 
 # fix yum since awips install breaks it per
 # https://www.unidata.ucar.edu/support/help/MailArchives/awips/msg00365.html
@@ -54,7 +67,6 @@ RUN export LD_LIBRARY_PATH=/usr/lib:/lib:/usr/lib64:/lib64
 RUN touch /etc/sysconfig/network
 
 # remove systemd config file that causes it to hang
-RUN sudo rm /lib/systemd/system/serial-getty\@.service
 
 # cleanup awips_install script
 RUN rm awips_install.sh
