@@ -15,20 +15,28 @@ RUN wget https://www.unidata.ucar.edu/software/awips2/awips_install.sh \
     && sudo ./awips_install.sh --edex
 
 # install conda per https://phoenixnap.com/kb/how-to-install-anaconda-centos-7
-RUN cd /tmp \
+# we do this as user `awips` since that is the user that calls EXEC
+USER awips
+ENV HOME /home/awips
+
+RUN mkdir -p /home/awips/tmp \
+    && cd /home/awips/tmp \
     && curl -O https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh \
-    && bash Anaconda3-2021.05-Linux-x86_64.sh -b \
-    && echo 'export PATH=/root/anaconda3/bin:$PATH' >> /root/.bashrc
+    && bash Anaconda3-2021.05-Linux-x86_64.sh -b -p /home/awips/anaconda3 
+
 # need to init conda then "bounce shell" for it to take effect before creating env
-RUN . /root/.bashrc \
+RUN echo 'export PATH=/home/awips/anaconda3/condabin:$PATH' >> /home/awips/.bashrc
+RUN . /home/awips/.bashrc \
     && conda init bash
-RUN . /root/.bashrc \
+
+RUN . /home/awips/.bashrc \
     && conda create --name grpc_env -y python=3.9 \
     && conda activate grpc_env \ 
     && pip install pygcdm \
-    && pip install pyyaml
+    && pip install pyyaml 
 
 # load in config files
+USER root
 COPY /edexc/etc/conf/ldmd.conf /awips2/ldm/etc/ldmd.conf
 COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
 COPY /edexc/etc/conf/edexServiceList /etc/rc.d/init.d/edexServiceList
@@ -38,7 +46,7 @@ COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 # load in edex server stuff
 RUN cd / \
     && mkdir /scripts
-COPY /edexc/etc/scripts/edex_container_server.py /scripts/edex_container_server.py
+COPY /common/edex_container_server.py /scripts/edex_container_server.py
 COPY /common/config.yaml /scripts/config.yaml
 COPY /common/trigger.py /scripts/trigger.py
 

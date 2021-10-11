@@ -9,6 +9,7 @@ import asyncio
 import pathlib
 import sys
 import yaml
+import queue as q
 
 class AWIPSHandler():
     def __init__(self, trigger_port=6000, server_port=6001, client_port=6002, host="localhost", pygcdm_client="localhost", pygcdm_server="localhost", variable_spec=""):
@@ -26,6 +27,9 @@ class AWIPSHandler():
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
         self.server.add_insecure_port(f'{self.pygcdm_client}:{self.server_port}')
         self.request_handler = Requester(self.pygcdm_server, self.client_port, self.variable_spec)
+
+        # setup remote file path queue
+        self.remote_fp_queue = q.SimpleQueue()
 
         # start server/trigger
         print('starting server...')
