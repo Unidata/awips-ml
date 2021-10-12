@@ -24,6 +24,10 @@ RUN mkdir -p /home/awips/tmp \
     && curl -O https://repo.anaconda.com/archive/Anaconda3-2021.05-Linux-x86_64.sh \
     && bash Anaconda3-2021.05-Linux-x86_64.sh -b -p /home/awips/anaconda3 
 
+# fix yum since awips install breaks it per
+# https://www.unidata.ucar.edu/support/help/MailArchives/awips/msg00365.html
+RUN echo 'export LD_LIBRARY_PATH=/usr/lib:/lib:/usr/lib64:/lib64' >> /home/awips/.bashrc
+
 # need to init conda then "bounce shell" for it to take effect before creating env
 RUN echo 'export PATH=/home/awips/anaconda3/condabin:$PATH' >> /home/awips/.bashrc
 RUN . /home/awips/.bashrc \
@@ -63,10 +67,6 @@ rm -f /lib/systemd/system/basic.target.wants/*;\
 rm -f /lib/systemd/system/anaconda.target.wants/*; \
 rm -f /lib/systemd/system/serial-getty\@.service;
 VOLUME [ "/sys/fs/cgroup" ]
-
-# fix yum since awips install breaks it per
-# https://www.unidata.ucar.edu/support/help/MailArchives/awips/msg00365.html
-RUN export LD_LIBRARY_PATH=/usr/lib:/lib:/usr/lib64:/lib64
 
 # create empty network file
 RUN touch /etc/sysconfig/network
