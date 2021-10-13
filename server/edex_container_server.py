@@ -10,6 +10,8 @@ import asyncio
 import sys
 import yaml
 
+MAX_MESSAGE_LENGTH = 1000*1024*1024
+
 # define class stuff
 class BaseServer():
     def __init__(self, fp_queue,
@@ -60,8 +62,10 @@ class BaseServer():
         while True:
             file_loc = await self.fp_queue.get()
             print(f"requesting file: {file_loc}")
+            print(f"current queue size = {self.fp_queue.qsize()}")
             nc_file = self.request_handler.request_data(file_loc)
-            print(nc_file)
+            print(nc_file, "\n\n")
+
 
     def responder(self):
         self.server.start()
@@ -90,7 +94,9 @@ class Requester():
         self.variable_spec = var_spec
 
     def request_data(self, loc):
-        with grpc.insecure_channel(f'{self.host}:{self.port}') as channel:
+        options = [('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
+                   ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH)]
+        with grpc.insecure_channel(f'{self.host}:{self.port}', options=options) as channel:
             stub = grpc_server.GcdmStub(channel)
             print(f"requesting data from {self.host}:{self.port}")
             request_msg = grpc_msg.HeaderRequest(location=loc)
