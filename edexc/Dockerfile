@@ -49,10 +49,10 @@ COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 
 # load in edex server stuff
 RUN cd / \
-    && mkdir /scripts
-COPY /common/edex_container_server.py /scripts/edex_container_server.py
-COPY /common/config.yaml /scripts/config.yaml
-COPY /common/trigger.py /scripts/trigger.py
+    && mkdir /server
+COPY /server/edex_container_server.py /server/edex_container_server.py
+COPY /server/config.yaml /scripts/config.yaml
+COPY /server/trigger.py /scripts/trigger.py
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker

@@ -33,32 +33,33 @@ class BaseServer():
 
 
         # setup pygcdm stuff
+        # define responder server
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
-        self.server.add_insecure_port(f'{self.pygcdm_client}:{self.rx_port}')
-        self.request_handler = Requester(self.pygcdm_server, self.tx_port, self.variable_spec)
+        self.server.add_insecure_port(f'{self.pygcdm_client}:{self.tx_port}')
+        self.server.start()
+
+        # define requester server
+        self.request_handler = Requester(self.pygcdm_server, self.rx_port, self.variable_spec)
 
     async def listener(self):
-        server = await asyncio.start_server(
+        trigger_server = await asyncio.start_server(
                 self.handle_trigger, self.host, self.rx_port_trigger)
-        print(f"starting server on {self.host}:{self.rx_port_trigger}")
-        async with server:
-            await server.serve_forever()
+        print(f"listening for file paths to request on {self.host}:{self.rx_port_trigger}...")
+        async with trigger_server:
+            await trigger_server.serve_forever()
 
     async def handle_trigger(self, reader, writer):
         data = await reader.read()
         message = data.decode()
         await self.fp_queue.put(message)
     
-    async def responder(self):
+    async def requester(self):
         while True:
-            try:
-                data = self.fp_queue.get_nowait()
-            except asyncio.QueueEmpty:
-                data = await self.fp_queue.get()
-            print(f"file ready = {data}")
-            print(f"queue size = {self.fp_queue.qsize()}\n")
-
+            file_loc = await self.fp_queue.get()
+            print(f"requesting file: {file_loc}")
+            nc_file = self.request_handler.request_data(file_loc)
+            print(nc_file)
 
 class Responder(grpc_server.GcdmServicer):
 
@@ -86,6 +87,7 @@ class Requester():
     def request_data(self, loc):
         with grpc.insecure_channel(f'{self.host}:{self.port}') as channel:
             stub = grpc_server.GcdmStub(channel)
+            print(f"requesting data from {self.host}:{self.port}")
             request_msg = grpc_msg.HeaderRequest(location=loc)
             data_msg = grpc_msg.DataRequest(location=loc, variable_spec=self.variable_spec)
             header_response = stub.GetNetcdfHeader(request_msg)
@@ -101,7 +103,7 @@ class Requester():
 # define functions that run server
 async def run_server(configs):
     server = BaseServer(asyncio.Queue(), **configs)
-    g = await asyncio.gather(server.listener(), server.responder())
+    g = await asyncio.gather(server.listener(), server.requester())
 
 
 # inherit class stuff for preprocess or edex server
@@ -118,7 +120,7 @@ if queue is not empty:
 
 if __name__=="__main__":
     handler_type = sys.argv[1]
-    with open("scripts/config.yaml") as file:
+    with open("server/config_dev.yaml") as file:  # BONE change this
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
     try:
         assert handler_type in ["tf_container", "edex_container"]

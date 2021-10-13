@@ -1,0 +1,15 @@
+edex_container:
+  rx_port: 6002
+  tx_port: 6001
+  rx_port_trigger: 6000
+  host: localhost
+  pygcdm_client: localhost
+  pygcdm_server: localhost
+
+tf_container:
+  rx_port: 6001
+  tx_port: 6002
+  rx_port_trigger: 7000
+  host: localhost
+  pygcdm_client: localhost
+  pygcdm_server: localhost
