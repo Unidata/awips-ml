@@ -30,12 +30,15 @@ RUN echo 'export LD_LIBRARY_PATH=/usr/lib:/lib:/usr/lib64:/lib64' >> /home/awips
 
 # need to init conda then "bounce shell" for it to take effect before creating env
 RUN echo 'export PATH=/home/awips/anaconda3/condabin:$PATH' >> /home/awips/.bashrc
+RUN echo 'export PATH=/home/awips/anaconda3/bin:$PATH' >> /home/awips/.bashrc
 RUN . /home/awips/.bashrc \
     && conda init bash
 
+# install a conda environment so we can get python3.9 executable
 RUN . /home/awips/.bashrc \
     && conda create --name grpc_env -y python=3.9 \
-    && conda activate grpc_env \ 
+    && conda activate grpc_env \
+    && pip install grpcio \
     && pip install pygcdm \
     && pip install pyyaml 
 
@@ -48,11 +51,9 @@ COPY /edexc/etc/conf/registry.xml /awips2/ldm/etc/registry.xml
 COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 
 # load in edex server stuff
-RUN cd / \
-    && mkdir /server
 COPY /server/edex_container_server.py /server/edex_container_server.py
-COPY /server/config.yaml /scripts/config.yaml
-COPY /server/trigger.py /scripts/trigger.py
+COPY /server/config.yaml /server/config.yaml
+COPY /server/trigger.py /server/trigger.py
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker

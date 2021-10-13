@@ -37,10 +37,12 @@ class BaseServer():
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
         self.server.add_insecure_port(f'{self.pygcdm_client}:{self.tx_port}')
-        self.server.start()
+        print(f"responding to grpc requests on {self.pygcdm_client}:{self.tx_port}")
+        self.responder()
 
         # define requester server
         self.request_handler = Requester(self.pygcdm_server, self.rx_port, self.variable_spec)
+        print(f"making grpc requests on {self.pygcdm_server}:{self.rx_port}")
 
     async def listener(self):
         trigger_server = await asyncio.start_server(
@@ -60,6 +62,9 @@ class BaseServer():
             print(f"requesting file: {file_loc}")
             nc_file = self.request_handler.request_data(file_loc)
             print(nc_file)
+
+    def responder(self):
+        self.server.start()
 
 class Responder(grpc_server.GcdmServicer):
 
@@ -120,7 +125,7 @@ if queue is not empty:
 
 if __name__=="__main__":
     handler_type = sys.argv[1]
-    with open("server/config_dev.yaml") as file:  # BONE change this
+    with open("server/config.yaml") as file:  # BONE change this
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
     try:
         assert handler_type in ["tf_container", "edex_container"]
