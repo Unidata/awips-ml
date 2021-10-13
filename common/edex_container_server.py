@@ -1,3 +1,8 @@
+import grpc
+from pygcdm.netcdf_encode import netCDF_Encode
+from pygcdm.netcdf_decode import netCDF_Decode
+from pygcdm.protogen import gcdm_server_pb2_grpc as grpc_server
+from pygcdm.protogen import gcdm_netcdf_pb2 as grpc_msg
 import socket
 import queue
 from concurrent import futures
@@ -24,11 +29,19 @@ class BaseServer():
         self.rx_port_trigger = rx_port_trigger
         self.pygcdm_client = pygcdm_client
         self.pygcdm_server = pygcdm_server
+        self.variable_spec = 'Sectorized_CMI' # BONE, need to expose this in an API
+
+
+        # setup pygcdm stuff
+        self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+        grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
+        self.server.add_insecure_port(f'{self.pygcdm_client}:{self.rx_port}')
+        self.request_handler = Requester(self.pygcdm_server, self.tx_port, self.variable_spec)
 
     async def listener(self):
         server = await asyncio.start_server(
                 self.handle_trigger, self.host, self.rx_port_trigger)
-        print(f"starting server on {self.host}:{self.rx_port}")
+        print(f"starting server on {self.host}:{self.rx_port_trigger}")
         async with server:
             await server.serve_forever()
 
@@ -43,7 +56,47 @@ class BaseServer():
                 data = self.fp_queue.get_nowait()
             except asyncio.QueueEmpty:
                 data = await self.fp_queue.get()
-            print(data)
+            print(f"file ready = {data}")
+            print(f"queue size = {self.fp_queue.qsize()}\n")
+
+
+class Responder(grpc_server.GcdmServicer):
+
+    def __init__(self):
+        self.encoder = netCDF_Encode()
+
+    def GetNetcdfHeader(self, request, context):
+        print('Header Requested')
+        return self.encoder.generate_header_from_request(request)
+
+    def GetNetcdfData(self, request, context):
+        print('Data Requested')
+
+        # stream the data response
+        data_response = [self.encoder.generate_data_from_request(request)]
+        for data in data_response:
+            yield(data)
+
+class Requester():
+    def __init__(self, host, port, var_spec):
+        self.host = host
+        self.port = port
+        self.variable_spec = var_spec
+
+    def request_data(self, loc):
+        with grpc.insecure_channel(f'{self.host}:{self.port}') as channel:
+            stub = grpc_server.GcdmStub(channel)
+            request_msg = grpc_msg.HeaderRequest(location=loc)
+            data_msg = grpc_msg.DataRequest(location=loc, variable_spec=self.variable_spec)
+            header_response = stub.GetNetcdfHeader(request_msg)
+
+            # unpack the streaming response - we know that there is only one object being transmitted
+            data_response = list(stub.GetNetcdfData(data_msg))[0]
+            return self.decode_response(header_response, data_response)
+
+    def decode_response(self, header, data):
+        decoder = netCDF_Decode()
+        return decoder.generate_file_from_response(header, data)
 
 # define functions that run server
 async def run_server(configs):
