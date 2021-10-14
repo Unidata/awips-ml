@@ -1,14 +1,14 @@
 version: "3"
 services:
-  tf:
-    container_name: tfc
+  processc:
+    container_name: processc
     build:
       context: .
-      dockerfile: ./tfc/Dockerfile
+      dockerfile: ./processc/Dockerfile
     tty: true
     networks: 
       - pygcdm-net
-    command: python server/edex_container_server.py tf_container
+    command: python server/edex_container_server.py process_container
 
   edex:
     container_name: edexc

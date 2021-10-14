@@ -19,8 +19,10 @@ class BaseServer():
             tx_port=None,
             host=None,
             rx_port_trigger=None,
+            tx_port_trigger=None,
             pygcdm_client=None,
             pygcdm_server=None,
+            variable_spec=None,
             ):
 
         # define queue and socket stuff
@@ -31,7 +33,7 @@ class BaseServer():
         self.rx_port_trigger = rx_port_trigger
         self.pygcdm_client = pygcdm_client
         self.pygcdm_server = pygcdm_server
-        self.variable_spec = 'Sectorized_CMI' # BONE, need to expose this in an API
+        self.variable_spec = variable_spec 
 
 
         # setup pygcdm stuff
@@ -40,13 +42,13 @@ class BaseServer():
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
         self.server.add_insecure_port(f'{self.pygcdm_client}:{self.tx_port}')
         print(f"responding to grpc requests on {self.pygcdm_client}:{self.tx_port}")
-        self.responder()
+        self.pygcdm_responder()
 
         # define requester server
         self.request_handler = Requester(self.pygcdm_server, self.rx_port, self.variable_spec)
         print(f"making grpc requests on {self.pygcdm_server}:{self.rx_port}")
 
-    async def listener(self):
+    async def trigger_listener(self):
         trigger_server = await asyncio.start_server(
                 self.handle_trigger, self.host, self.rx_port_trigger)
         print(f"listening for file paths to request on {self.host}:{self.rx_port_trigger}...")
@@ -58,17 +60,17 @@ class BaseServer():
         message = data.decode()
         await self.fp_queue.put(message)
     
-    async def requester(self):
+    def pygcdm_responder(self):
+        self.server.start()
+    
+    async def pygcdm_requester(self):
         while True:
             file_loc = await self.fp_queue.get()
             print(f"trigger file to request: {file_loc}")
             print(f"current queue size = {self.fp_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
-            print(nc_file, "\n\n")
+            print(f"netcdf file recieved")
 
-
-    def responder(self):
-        self.server.start()
 
 class Responder(grpc_server.GcdmServicer):
 
@@ -102,9 +104,7 @@ class Requester():
             request_msg = grpc_msg.HeaderRequest(location=loc)
             data_msg = grpc_msg.DataRequest(location=loc, variable_spec=self.variable_spec)
 
-            # unpack the streaming response 
-            # need to do asnychonously iterate (which precludes using list)
-            # also know only one data_msg is being transmitted hence overwrite
+            # async unpack the streaming response - data_response is only one item
             header_response = await stub.GetNetcdfHeader(request_msg)
             data_response = [data async for data in stub.GetNetcdfData(data_msg)][0]
 
@@ -117,16 +117,16 @@ class Requester():
 # define functions that run server
 async def run_server(configs):
     server = BaseServer(asyncio.Queue(), **configs)
-    g = await asyncio.gather(server.listener(), server.requester())
+    g = await asyncio.gather(server.trigger_listener(), server.pygcdm_requester())
 
 if __name__=="__main__":
     handler_type = sys.argv[1]
-    with open("server/config_dev.yaml") as file:  # BONE change this
+    with open("server/config.yaml") as file:  # BONE change this
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
     try:
-        assert handler_type in ["tf_container", "edex_container"]
+        assert handler_type in ["process_container", "edex_container"]
     except AssertionError:
-        raise SyntaxError("incorrect input argument; options are \"tf_container\" or \"edex_container\"")
+        raise SyntaxError("incorrect input argument; options are \"process_container\" or \"edex_container\"")
     asyncio.run(run_server(config_dict[handler_type]))
 
 
