@@ -8,7 +8,7 @@ if __name__ == '__main__':
     handler_type="edex_container"
 
     # load in configs
-    with open("server/config.yaml") as file:  # BONE change this
+    with open("/server/config.yaml") as file:  # BONE change this
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
     try:
         assert handler_type in ["process_container", "edex_container"]
