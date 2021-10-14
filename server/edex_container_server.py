@@ -61,9 +61,9 @@ class BaseServer():
     async def requester(self):
         while True:
             file_loc = await self.fp_queue.get()
-            print(f"requesting file: {file_loc}")
+            print(f"trigger file to request: {file_loc}")
             print(f"current queue size = {self.fp_queue.qsize()}")
-            nc_file = self.request_handler.request_data(file_loc)
+            nc_file = await self.request_handler.request_data(file_loc)
             print(nc_file, "\n\n")
 
 
@@ -93,18 +93,22 @@ class Requester():
         self.port = port
         self.variable_spec = var_spec
 
-    def request_data(self, loc):
+    async def request_data(self, loc):
         options = [('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
                    ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH)]
-        with grpc.insecure_channel(f'{self.host}:{self.port}', options=options) as channel:
+        async with grpc.aio.insecure_channel(f'{self.host}:{self.port}', options=options) as channel:
             stub = grpc_server.GcdmStub(channel)
             print(f"requesting data from {self.host}:{self.port}")
             request_msg = grpc_msg.HeaderRequest(location=loc)
             data_msg = grpc_msg.DataRequest(location=loc, variable_spec=self.variable_spec)
-            header_response = stub.GetNetcdfHeader(request_msg)
 
-            # unpack the streaming response - we know that there is only one object being transmitted
-            data_response = list(stub.GetNetcdfData(data_msg))[0]
+            # unpack the streaming response 
+            # need to do asnychonously iterate (which precludes using list)
+            # also know only one data_msg is being transmitted hence overwrite
+            header_response = await stub.GetNetcdfHeader(request_msg)
+            async for data in stub.GetNetcdfData(data_msg):
+                data_response = data
+
             return self.decode_response(header_response, data_response)
 
     def decode_response(self, header, data):
@@ -115,19 +119,6 @@ class Requester():
 async def run_server(configs):
     server = BaseServer(asyncio.Queue(), **configs)
     g = await asyncio.gather(server.listener(), server.requester())
-
-
-# inherit class stuff for preprocess or edex server
-
-"""
-EVENT LOOP:
-Server waits for job to enter queue
-if queue is empty:
-        pass
-if queue is not empty:
-        take item from queue and request file from server
-        do something with file (either process via TF or ingest into EDEX) <- "something" lives in subclass
-"""
 
 if __name__=="__main__":
     handler_type = sys.argv[1]
