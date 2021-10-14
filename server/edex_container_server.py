@@ -106,8 +106,7 @@ class Requester():
             # need to do asnychonously iterate (which precludes using list)
             # also know only one data_msg is being transmitted hence overwrite
             header_response = await stub.GetNetcdfHeader(request_msg)
-            async for data in stub.GetNetcdfData(data_msg):
-                data_response = data
+            data_response = [data async for data in stub.GetNetcdfData(data_msg)][0]
 
             return self.decode_response(header_response, data_response)
 
@@ -122,7 +121,7 @@ async def run_server(configs):
 
 if __name__=="__main__":
     handler_type = sys.argv[1]
-    with open("server/config.yaml") as file:  # BONE change this
+    with open("server/config_dev.yaml") as file:  # BONE change this
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
     try:
         assert handler_type in ["tf_container", "edex_container"]
