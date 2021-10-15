@@ -30,3 +30,7 @@ import test
 test.send("cat", "edexc", 6000)  # this works
 test.send("test.nc", "edexc", 6000)  # this should work but crashes program. I think this is because grpc is trying to send over localhost but this needs to be changed to "tfc" (or "edexc" if being executed from other container, do this in yaml)
 ```
+
+## Info on file naming conventions for `ldmd.conf`
+[http://edc.occ-data.org/goes16/getdata/#file-formats](http://edc.occ-data.org/goes16/getdata/#file-formats)
+[http://cimss.ssec.wisc.edu/goes/ABI_File_Naming_Conventions.pdf](http://cimss.ssec.wisc.edu/goes/ABI_File_Naming_Conventions.pdf)

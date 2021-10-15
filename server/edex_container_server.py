@@ -70,6 +70,7 @@ class BaseServer():
             print(f"current queue size = {self.fp_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
             print(f"netcdf file recieved")
+            print(nc_file.variables[self.variable_spec].shape)
 
 
 class Responder(grpc_server.GcdmServicer):

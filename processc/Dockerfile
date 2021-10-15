@@ -10,3 +10,6 @@ RUN apt-get install -y iputils-ping iproute2 vim
 COPY /server/config.yaml /server/config.yaml
 COPY /server/edex_container_server.py /server/edex_container_server.py
 COPY /server/trigger.py /server/trigger.py
+
+# copy in processing files
+COPY /processc/process_scripts/* /process_scripts/
