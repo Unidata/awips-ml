@@ -81,8 +81,7 @@ class BaseServer():
                 url = 'http://tfc:8501/v1/models/model:predict'  # bone expose this in API for namespace
                 request = self.netcdf_to_request(nc_file, self.variable_spec)
                 response = await self.make_request(url, request)
-                nc_file = self.response_to_netcdf(nc_file, response, self.variable_spec)
-                print(nc_file)
+                self.response_to_netcdf(nc_file, response, self.variable_spec)  # netcdf file gets modified in place
 
             # else it is edex container so need to save stuff
             else:
@@ -95,11 +94,13 @@ class BaseServer():
                 return np.array(response_json['predictions'])
 
     def netcdf_to_request(self, nc, variable_spec):
+        # takes netcdf file data for variable spec, converts to numpy array, and sends via https to tensorflow
         data = nc.variables[variable_spec][:].data
         data = data.reshape((1, *data.shape))
         return f'{{"instances" : {data.tolist()}}}'
 
     def response_to_netcdf(self, nc, response, variable_spec):
+        # takes returned numpy array and overwrites origin netcdf file
         nc.variables[variable_spec][:] = response.squeeze()
 
 
