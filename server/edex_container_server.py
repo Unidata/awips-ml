@@ -7,14 +7,17 @@ import socket
 import queue
 from concurrent import futures
 import asyncio
+import aiohttp
 import sys
 import yaml
+import numpy as np
 
 MAX_MESSAGE_LENGTH = 1000*1024*1024
 
 # define class stuff
 class BaseServer():
     def __init__(self, fp_queue,
+            process_type,
             rx_port=None,
             tx_port=None,
             host=None,
@@ -27,6 +30,7 @@ class BaseServer():
 
         # define queue and socket stuff
         self.fp_queue = fp_queue
+        self.process_type = process_type
         self.rx_port = rx_port
         self.tx_port = tx_port
         self.host = host
@@ -70,7 +74,33 @@ class BaseServer():
             print(f"current queue size = {self.fp_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
             print(f"netcdf file recieved")
-            print(nc_file.variables[self.variable_spec].shape)
+
+            # BONE eventually break thins into distinct sub classes to get rid of "process_container" arg, inherit from base class
+            # if process container then send to tf
+            if self.process_type == 'process_container':
+                url = 'http://tfc:8501/v1/models/model:predict'  # bone expose this in API for namespace
+                request = self.netcdf_to_request(nc_file, self.variable_spec)
+                response = await self.make_request(url, request)
+                nc_file = self.response_to_netcdf(nc_file, response, self.variable_spec)
+                print(nc_file)
+
+            # else it is edex container so need to save stuff
+            else:
+                pass # bone save somewhere for ingestion
+
+    async def make_request(self, url, data):
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, data=data) as response:
+                response_json = await response.json()
+                return np.array(response_json['predictions'])
+
+    def netcdf_to_request(self, nc, variable_spec):
+        data = nc.variables[variable_spec][:].data
+        data = data.reshape((1, *data.shape))
+        return f'{{"instances" : {data.tolist()}}}'
+
+    def response_to_netcdf(self, nc, response, variable_spec):
+        nc.variables[variable_spec][:] = response.squeeze()
 
 
 class Responder(grpc_server.GcdmServicer):
@@ -116,18 +146,18 @@ class Requester():
         return decoder.generate_file_from_response(header, data)
 
 # define functions that run server
-async def run_server(configs):
-    server = BaseServer(asyncio.Queue(), **configs)
+async def run_server(configs, process_type):
+    server = BaseServer(asyncio.Queue(), process_type, **configs)
     g = await asyncio.gather(server.trigger_listener(), server.pygcdm_requester())
 
 if __name__=="__main__":
-    handler_type = sys.argv[1]
+    process_type = sys.argv[1]
     with open("server/config.yaml") as file:  # BONE change this
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
     try:
-        assert handler_type in ["process_container", "edex_container"]
+        assert process_type in ["process_container", "edex_container"]
     except AssertionError:
         raise SyntaxError("incorrect input argument; options are \"process_container\" or \"edex_container\"")
-    asyncio.run(run_server(config_dict[handler_type]))
+    asyncio.run(run_server(config_dict[process_type], process_type))
 
 

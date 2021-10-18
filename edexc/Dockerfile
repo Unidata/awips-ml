@@ -40,7 +40,8 @@ RUN . /home/awips/.bashrc \
     && conda activate grpc_env \
     && pip install grpcio \
     && pip install pygcdm \
-    && pip install pyyaml 
+    && pip install pyyaml \
+    && pip install aiohttp 
 
 # load in config files
 USER root
