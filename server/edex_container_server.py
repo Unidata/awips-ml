@@ -5,6 +5,7 @@ from pygcdm.protogen import gcdm_server_pb2_grpc as grpc_server
 from pygcdm.protogen import gcdm_netcdf_pb2 as grpc_msg
 import socket
 import queue
+import pathlib
 from concurrent import futures
 import asyncio
 import aiohttp
@@ -35,6 +36,7 @@ class BaseServer():
         self.tx_port = tx_port
         self.host = host
         self.rx_port_trigger = rx_port_trigger
+        self.tx_port_trigger = tx_port_trigger
         self.pygcdm_client = pygcdm_client
         self.pygcdm_server = pygcdm_server
         self.variable_spec = variable_spec 
@@ -78,14 +80,33 @@ class BaseServer():
             # BONE eventually break thins into distinct sub classes to get rid of "process_container" arg, inherit from base class
             # if process container then send to tf
             if self.process_type == 'process_container':
+
+                # first send netcdf file data to tf container
                 url = 'http://tfc:8501/v1/models/model:predict'  # bone expose this in API for namespace
                 request = self.netcdf_to_request(nc_file, self.variable_spec)
                 response = await self.make_request(url, request)
-                self.response_to_netcdf(nc_file, response, self.variable_spec)  # netcdf file gets modified in place
+
+                # then update netcdf (in place) with values from tensorflow, and save to a path,
+                # reuse path structure from edex container
+                self.response_to_netcdf(nc_file, response, self.variable_spec)
+                fp = pathlib.Path(file_loc)
+                fp.mkdir(parents=True, exist_ok=True)
+                fp = fp.with_stem(fp.stem + '_ml')
+                nc_file.to_netcdf(fp)  # this saves to path
+
+                # finally send back to edex
+                reader, writer = await asyncio.open_connection(
+                        self.pygcdm_server, self.tx_port_trigger)
+                writer.write(str(fp).encode())
+                await writer.drain()
+                writer.close()
+                await writer.wait_closed()
 
             # else it is edex container so need to save stuff
             else:
-                pass # bone save somewhere for ingestion
+                fp = pathlib.Path(file_loc)
+                fp = fp.with_stem(fp.stem + '_ml')
+                nc_file.to_netcdf(fp)
 
     async def make_request(self, url, data):
         async with aiohttp.ClientSession() as session:
