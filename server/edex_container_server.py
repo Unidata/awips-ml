@@ -115,8 +115,9 @@ class BaseServer():
                 fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
                 fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
                 og_nc_file = xr.open_dataset(fp)
-                og_nc_file = og_nc_file.assign({'Sectorized_CMI':nc_file.variables[self.variable_spec]})
-                og_nc_file.to_netcdf(fp_ml)
+                nc_file = og_nc_file.assign({self.variable_spec + '_ml':nc_file.variables[self.variable_spec]})
+                nc_file = nc_file.drop_vars({self.variable_spec:nc_file.variables[self.variable_spec]})
+                nc_file.to_netcdf(fp_ml)
 
                 # BONE this is failing, view via sudo journalctl -fu listener_start.service
 #                proc_qpid = await asyncio.create_subprocess_shell(
