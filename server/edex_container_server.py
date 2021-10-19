@@ -12,8 +12,12 @@ import aiohttp
 import sys
 import yaml
 import numpy as np
+import xarray as xr
+import subprocess
 
 MAX_MESSAGE_LENGTH = 1000*1024*1024
+EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
+EDEX_QPID_NOTIFICATION = "/awips2/ldm/dev/notifyAWIPS2-unidata.py"
 
 # define class stuff
 class BaseServer():
@@ -86,27 +90,47 @@ class BaseServer():
                 request = self.netcdf_to_request(nc_file, self.variable_spec)
                 response = await self.make_request(url, request)
 
+                
                 # then update netcdf (in place) with values from tensorflow, and save to a path,
                 # reuse path structure from edex container
                 self.response_to_netcdf(nc_file, response, self.variable_spec)
                 fp = pathlib.Path(file_loc)
                 fp.mkdir(parents=True, exist_ok=True)
-                fp = fp.with_stem(fp.stem + '_ml')
-                nc_file.to_netcdf(fp)  # this saves to path
+                fp_ml = fp.with_stem(fp.stem + '_ml')
+                nc_file.to_netcdf(fp_ml)  # this saves to path
 
                 # finally send back to edex
                 reader, writer = await asyncio.open_connection(
                         self.pygcdm_server, self.tx_port_trigger)
-                writer.write(str(fp).encode())
+                writer.write(str(fp_ml).encode())
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
 
             # else it is edex container so need to save stuff
+            # we call because qpid notifier is written for python 2 not 3
             else:
-                fp = pathlib.Path(file_loc)
-                fp = fp.with_stem(fp.stem + '_ml')
-                nc_file.to_netcdf(fp)
+
+                # start by copying old file to new on edex container
+                fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
+                fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
+                print(list(nc_file.variables.keys()))
+                sys.stdout.flush()
+                nc_file = nc_file.rename_vars({self.variable_spec: self.variable_spec + '_ml'})
+                print(list(nc_file.variables.keys()))
+                sys.stdout.flush()
+                og_nc_file = xr.open_dataset(fp)
+                nc_file = nc_file.merge(og_nc_file)
+                print(list(nc_file.variables.keys()),"\n\n")
+                sys.stdout.flush()
+                nc_file.to_netcdf(fp_ml)
+
+                # BONE this is failing, view via sudo journalctl -u listener_start.service
+#                proc_qpid = await asyncio.create_subprocess_shell(
+#                        f'{EDEX_PYTHON_LOCATION} \
+#                        {EDEX_QPID_NOTIFICATION} \
+#                        {str(fp)}')
+#                stdout, stderr = await proc_qpid.communicate()
 
     async def make_request(self, url, data):
         async with aiohttp.ClientSession() as session:
