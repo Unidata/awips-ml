@@ -81,6 +81,8 @@ COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_star
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
 COPY /edexc/etc/systemd/listener_start.sh /scripts/listener_start.sh
 RUN chmod 755 /scripts/listener_start.sh
+COPY /edexc/etc/notify_qpid.sh /scripts/notify_qpid.sh
+RUN chmod 755 /scripts/notify_qpid.sh
 
 # cleanup awips_install script
 RUN rm awips_install.sh

@@ -119,7 +119,14 @@ class BaseServer():
                 nc_file = nc_file.drop_vars({self.variable_spec:nc_file.variables[self.variable_spec]})
                 nc_file.to_netcdf(fp_ml)
 
-                # BONE this is failing, view via sudo journalctl -fu listener_start.service
+                print(str(fp_ml))
+                sys.stdout.flush()
+
+                # view output via sudo journalctl -fu listener_start.service
+                # BONE, add error handling
+                proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
+                    EDEX_QPID_NOTIFICATION,
+                    str(fp_ml)])
 #                proc_qpid = await asyncio.create_subprocess_shell(
 #                        f'{EDEX_PYTHON_LOCATION} \
 #                        {EDEX_QPID_NOTIFICATION} \
