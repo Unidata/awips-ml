@@ -114,18 +114,11 @@ class BaseServer():
                 # start by copying old file to new on edex container
                 fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
                 fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
-                print(list(nc_file.variables.keys()))
-                sys.stdout.flush()
-                nc_file = nc_file.rename_vars({self.variable_spec: self.variable_spec + '_ml'})
-                print(list(nc_file.variables.keys()))
-                sys.stdout.flush()
                 og_nc_file = xr.open_dataset(fp)
-                nc_file = nc_file.merge(og_nc_file)
-                print(list(nc_file.variables.keys()),"\n\n")
-                sys.stdout.flush()
-                nc_file.to_netcdf(fp_ml)
+                og_nc_file = og_nc_file.assign({'Sectorized_CMI':nc_file.variables[self.variable_spec]})
+                og_nc_file.to_netcdf(fp_ml)
 
-                # BONE this is failing, view via sudo journalctl -u listener_start.service
+                # BONE this is failing, view via sudo journalctl -fu listener_start.service
 #                proc_qpid = await asyncio.create_subprocess_shell(
 #                        f'{EDEX_PYTHON_LOCATION} \
 #                        {EDEX_QPID_NOTIFICATION} \
