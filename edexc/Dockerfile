@@ -50,6 +50,8 @@ COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
 COPY /edexc/etc/conf/edexServiceList /etc/rc.d/init.d/edexServiceList
 COPY /edexc/etc/conf/registry.xml /awips2/ldm/etc/registry.xml
 COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
+COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_static/base/satellite/goesr/descriptions/Sectorized_CMI
+COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/common_static/base/styleRules/goesrCMI-ImageryStyleRules.xml
 
 # load in edex server stuff
 COPY /server/edex_container_server.py /server/edex_container_server.py
