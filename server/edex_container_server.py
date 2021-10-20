@@ -114,13 +114,10 @@ class BaseServer():
                 # start by copying old file to new on edex container
                 fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
                 fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
-                og_nc_file = xr.open_dataset(fp)
-                nc_file = og_nc_file.assign({self.variable_spec + '_ml':nc_file.variables[self.variable_spec]})
-                nc_file = nc_file.drop_vars({self.variable_spec:nc_file.variables[self.variable_spec]})
+                og_nc_file = xr.open_dataset(fp, mask_and_scale=False)
+                og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
+                nc_file = og_nc_file.rename_vars({self.variable_spec:self.variable_spec+'_ml'})
                 nc_file.to_netcdf(fp_ml)
-
-                print(str(fp_ml))
-                sys.stdout.flush()
 
                 # view output via sudo journalctl -fu listener_start.service
                 # BONE, add error handling
