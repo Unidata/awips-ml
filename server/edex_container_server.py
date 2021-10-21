@@ -13,6 +13,7 @@ import sys
 import yaml
 import numpy as np
 import xarray as xr
+import netCDF4 as nc4
 import subprocess
 
 MAX_MESSAGE_LENGTH = 1000*1024*1024
@@ -118,6 +119,10 @@ class BaseServer():
                 og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
                 nc_file = og_nc_file.rename_vars({self.variable_spec:self.variable_spec+'_ml'})
                 nc_file.to_netcdf(fp_ml)
+                nc = nc4.Dataset(fp_ml)
+                print(nc.variables['fixedgrid_projection'].ncattrs())
+                sys.stdout.flush()
+                sys.stderr.flush()
 
                 # view output via sudo journalctl -fu listener_start.service
                 # BONE, add error handling
