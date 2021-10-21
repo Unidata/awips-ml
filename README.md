@@ -68,7 +68,7 @@ awips-ml is composed of three containers and some other directories which are al
 - `docker-compose.yml`: This file controls how `edexc`, `processc`, and `tfc` are launched/interact with each other. In general user configuration should not be necessary.
 In general/where possible user configurations exist in specific files. Users should (in general) not need to modify any `Dockerfile` files.
 
-#### `edexc`
+#### edexc
 This container has several configuration files that control the type of data ingested by EDEX and CAVE specific configuration. These files are all found in `edexc/etc/conf` - files in `edexc/etc/systemd` should not be modified by users. Unless noted below, files in `edexc/etc/conf` should not be edited by users:
 
 ###### `ldmd.conf`
@@ -101,16 +101,59 @@ Use this filename to change the hostname:
 <hostname>[name].docker</hostname>
 ```
 
-#### `tfc`
+#### tfc
+The `tfc` container is designed to be lightweight in the sense that users only need to point to the location of their trained model. Users can do this by modifying `tfc/Dockerfile`:
+```
+COPY ./tfc/models/[saved_model] /models/model
+```
+Where `[saved_model]` is the location of the model they'd like to serve with the `tfc` container. Note that `[saved_model]` must conform to this directory structure:
+```
+[saved_model]/[version_number]/
+```
+because the underlying TensorFlow docker image in `tfc` needs a version number to run.
 
-#### `processc`
+#### processc
+This container does not have any configuration options associated with it.
+
+#### server
+This folder contains several configuration files/scripts used for handling data I/O from the `edexc`/EDEX server. Users do not need to modify the `edex_container_server.py` or `trigger.py` files directly as these can be controlled with `config.yaml`
+
+###### `config.yaml`
+The main parameter to change in this file is `variable_spec` - this is the `netCDF` variable that is passed between `edexc` and `processc` (and eventually `tfc`).
+
+Besides this, `config.yaml` controls several aspects of the inter-container networking and which ports the `edexc` and `processc` containers communicate with each other; in general these ports do not need to be modified as they are restricted to the docker network namespace so they shouldn't interfere with the host OS's network namespace.
+
 
 ## Troubleshooting<a name="tc_troubleshooting"></a>
-BONE add in
-- caveData
-- edex log location
-- upstream ldm location
-  - this should be added as caveat to start
-- how to view journalctl
+This section covers common problems. If your question is not answered here, feel free to open a [new issue](https://github.com/rmcsqrd/awips-ml/issues) for help.
 
-####
+#### What should I do if:
+###### No data is available in the CAVE Product Browser:
+- Try waiting for a few minutes to see if data loads - sometimes there is a lag between launching the EDEX container and when data is available.
+- If no data eventually appears, interact with the container and check the LDM log by:
+```
+docker exec -it edexc bash
+less /awips2/ldm/logs/ldmd.log
+```
+Within this log file, you should see something similar to:
+```
+20211021T183357.073945Z iddc.unidata.ucar.edu[1111] requester6.c:make_request:311       NOTE  Upstream LDM-6 on iddc.unidata.ucar.edu is willing to be a primary feeder
+```
+If you do not see a message like this, that means that whatever upstream LDM specified in the `ldmd.conf` file is rejecting your requests. Generally this means your IP address is being rejected. Contact the upstream LDM administrator for more information. In the case of Unidata LDM's, your IP address needs to be associated with a `.edu` domain.
+
+###### My containers keep crashing
+Generally it is convenient to launch a container in detached mode (`docker-compose up -d`), however this means that you can't see the output of the container. If your container is crashing it can be convenient to launch the container normally (`docker-compose up`) and view the output (especially for the `processc`/`tfc` containers).
+
+Additionally it can be useful to look at the outputs of the containers themselves by attaching to the container process launched by `docker-compose`; you can do this via:
+```
+docker attach [container_name]
+```
+
+###### Stuff just doesn't work
+File an issue (ideally with a link to your forked `awips-ml` repository). Useful places to look for logs within the `edexc` container are:
+- `awips2/edex/logs/edex-ingest-[product_type]-[date].log`
+- `awips2/ldm/logs/ldmd.log`
+- The output of the python script handling communication between `edexc` and `tfc` can be viewed via the following command within the `edexc` container:
+```
+sudo journalctl -fu listener_start.service
+```
