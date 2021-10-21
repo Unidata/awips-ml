@@ -88,6 +88,7 @@ class BaseServer():
 
                 # first send netcdf file data to tf container
                 url = 'http://tfc:8501/v1/models/model:predict'  # bone expose this in API for namespace
+                print(nc_file[self.variable_spec])
                 request = self.netcdf_to_request(nc_file, self.variable_spec)
                 response = await self.make_request(url, request)
 
@@ -119,16 +120,15 @@ class BaseServer():
                 og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
                 nc_file = og_nc_file.rename_vars({self.variable_spec:self.variable_spec+'_ml'})
                 nc_file.to_netcdf(fp_ml)
-                nc = nc4.Dataset(fp_ml)
-                print(nc.variables['fixedgrid_projection'].ncattrs())
-                sys.stdout.flush()
-                sys.stderr.flush()
 
                 # view output via sudo journalctl -fu listener_start.service
                 # BONE, add error handling
                 proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
                     EDEX_QPID_NOTIFICATION,
                     str(fp_ml)])
+                print(proc_qpid)
+                sys.stdout.flush()
+                sys.stderr.flush()
 #                proc_qpid = await asyncio.create_subprocess_shell(
 #                        f'{EDEX_PYTHON_LOCATION} \
 #                        {EDEX_QPID_NOTIFICATION} \
@@ -138,6 +138,9 @@ class BaseServer():
     async def make_request(self, url, data):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=data) as response:
+                # BONE add in error handling, get errror for
+                # return np.array(response_json['predictions']), KeyError: 'predictions'
+                # if dimensions are wrong for tfc model
                 response_json = await response.json()
                 return np.array(response_json['predictions'])
 

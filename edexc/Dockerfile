@@ -50,7 +50,7 @@ COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
 COPY /edexc/etc/conf/edexServiceList /etc/rc.d/init.d/edexServiceList
 COPY /edexc/etc/conf/registry.xml /awips2/ldm/etc/registry.xml
 COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
-COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_static/base/satellite/goesr/descriptions/Sectorized_CMI
+COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_static/base/satellite/goesr/descriptions/Sectorized_CMI/CMIDataDescription_ML.xml
 COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/common_static/base/styleRules/goesrCMI-ImageryStyleRules.xml
 
 # load in edex server stuff
@@ -83,8 +83,6 @@ COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_star
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
 COPY /edexc/etc/systemd/listener_start.sh /scripts/listener_start.sh
 RUN chmod 755 /scripts/listener_start.sh
-COPY /edexc/etc/notify_qpid.sh /scripts/notify_qpid.sh
-RUN chmod 755 /scripts/notify_qpid.sh
 
 # cleanup awips_install script
 RUN rm awips_install.sh
