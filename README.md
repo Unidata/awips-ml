@@ -1,6 +1,8 @@
 # awips-ml
 awips-ml allows users to visualize [TensorFlow](https://www.tensorflow.org/) machine learning models witihin [AWIPS](https://www.unidata.ucar.edu/software/awips2/) via [CAVE](https://unidata.github.io/awips2/install/install-cave/).
 
+![Example data being displayed](aux/example.png)
+
 - [Quickstart](#tc_quickstart)
 - [Interacting with the Containers](#tc_interact)
 - [Modifying the Containers](#tc_modify)
