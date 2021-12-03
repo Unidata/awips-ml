@@ -1,5 +1,6 @@
 *.swp
 *.swo
+*.ipynb_checkpoints
 *.DS_Store
 tfc/demo/*
 debug_tools/*
