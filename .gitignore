@@ -2,4 +2,5 @@
 *.swo
 *.DS_Store
 tfc/demo/*
+debug_tools/*
 **/__pycache__
