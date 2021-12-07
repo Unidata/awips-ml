@@ -15,6 +15,8 @@ import numpy as np
 import xarray as xr
 import netCDF4 as nc4
 import subprocess
+from usr.preproc import preproc
+from usr.postproc import postproc
 
 MAX_MESSAGE_LENGTH = 1000*1024*1024
 EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
@@ -148,11 +150,13 @@ class BaseServer():
         # takes netcdf file data for variable spec, converts to numpy array, and sends via https to tensorflow
         data = nc.variables[variable_spec][:].data
         data = data.reshape((1, *data.shape))
+        data = preproc(data)
         return f'{{"instances" : {data.tolist()}}}'
 
     def response_to_netcdf(self, nc, response, variable_spec):
         # takes returned numpy array and overwrites origin netcdf file
-        nc.variables[variable_spec][:] = response.squeeze()
+        response = postproc(response)
+        nc.variables[variable_spec][:] = response.squeeze()  # okay if this is redundant
 
 
 class Responder(grpc_server.GcdmServicer):

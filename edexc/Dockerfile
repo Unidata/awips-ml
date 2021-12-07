@@ -58,6 +58,9 @@ COPY /server/edex_container_server.py /server/edex_container_server.py
 COPY /server/config.yaml /server/config.yaml
 COPY /server/trigger.py /server/trigger.py
 
+# copy in custom user scripts
+COPY /server/usr/* /server/usr/
+
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker
 RUN (cd /lib/systemd/system/sysinit.target.wants/; for i in *; do [ $i == \
