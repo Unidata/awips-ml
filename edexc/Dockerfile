@@ -55,11 +55,10 @@ COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/co
 
 # load in edex server stuff
 COPY /server/edex_container_server.py /server/edex_container_server.py
-COPY /server/config.yaml /server/config.yaml
 COPY /server/trigger.py /server/trigger.py
 
-# copy in custom user scripts
-COPY /server/usr/* /server/usr/
+# copy in user defined stuff
+COPY /usr/* /server/
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker

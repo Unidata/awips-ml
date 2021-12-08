@@ -15,8 +15,8 @@ import numpy as np
 import xarray as xr
 import netCDF4 as nc4
 import subprocess
-from usr.preproc import preproc
-from usr.postproc import postproc
+from preproc import preproc  # custom user pre/post-processing scripts
+from postproc import postproc
 
 MAX_MESSAGE_LENGTH = 1000*1024*1024
 EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
@@ -90,26 +90,28 @@ class BaseServer():
 
                 # first send netcdf file data to tf container
                 url = 'http://tfc:8501/v1/models/model:predict'  # bone expose this in API for namespace
-                print(nc_file[self.variable_spec])
                 request = self.netcdf_to_request(nc_file, self.variable_spec)
                 response = await self.make_request(url, request)
 
-                
-                # then update netcdf (in place) with values from tensorflow, and save to a path,
-                # reuse path structure from edex container
-                self.response_to_netcdf(nc_file, response, self.variable_spec)
-                fp = pathlib.Path(file_loc)
-                fp.mkdir(parents=True, exist_ok=True)
-                fp_ml = fp.with_stem(fp.stem + '_ml')
-                nc_file.to_netcdf(fp_ml)  # this saves to path
+                if response == 'error':
+                    pass
+                else:
+                    
+                    # then update netcdf (in place) with values from tensorflow, and save to a path,
+                    # reuse path structure from edex container
+                    self.response_to_netcdf(nc_file, response, self.variable_spec)
+                    fp = pathlib.Path(file_loc)
+                    fp.mkdir(parents=True, exist_ok=True)
+                    fp_ml = fp.with_stem(fp.stem + '_ml')
+                    nc_file.to_netcdf(fp_ml)  # this saves to path
 
-                # finally send back to edex
-                reader, writer = await asyncio.open_connection(
-                        self.pygcdm_server, self.tx_port_trigger)
-                writer.write(str(fp_ml).encode())
-                await writer.drain()
-                writer.close()
-                await writer.wait_closed()
+                    # finally send back to edex
+                    reader, writer = await asyncio.open_connection(
+                            self.pygcdm_server, self.tx_port_trigger)
+                    writer.write(str(fp_ml).encode())
+                    await writer.drain()
+                    writer.close()
+                    await writer.wait_closed()
 
             # else it is edex container so need to save stuff
             # we call because qpid notifier is written for python 2 not 3
@@ -140,11 +142,16 @@ class BaseServer():
     async def make_request(self, url, data):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=data) as response:
-                # BONE add in error handling, get errror for
-                # return np.array(response_json['predictions']), KeyError: 'predictions'
-                # if dimensions are wrong for tfc model
                 response_json = await response.json()
-                return np.array(response_json['predictions'])
+                try:
+                    return np.array(response_json['predictions'])
+                except KeyError:
+                    # if missing 'predictions' key then model could not process sent data
+                    print("\nError in tfc response:")
+                    print(response_json, "\n")
+                    return 'error'
+                except:
+                    return 'error'
 
     def netcdf_to_request(self, nc, variable_spec):
         # takes netcdf file data for variable spec, converts to numpy array, and sends via https to tensorflow
