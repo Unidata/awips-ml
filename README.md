@@ -130,7 +130,7 @@ Besides this, `config.yaml` controls several aspects of the inter-container netw
 This section covers common problems. If your question is not answered here, feel free to open a [new issue](https://github.com/rmcsqrd/awips-ml/issues) for help.
 
 #### What should I do if:
-###### No data is available in the CAVE Product Browser:
+##### No data is available in the CAVE Product Browser:
 - Try waiting for a few minutes to see if data loads - sometimes there is a lag between launching the EDEX container and when data is available.
 - If no data eventually appears, interact with the container and check the LDM log by:
 ```
@@ -143,7 +143,7 @@ Within this log file, you should see something similar to:
 ```
 If you do not see a message like this, that means that whatever upstream LDM specified in the `ldmd.conf` file is rejecting your requests. Generally this means your IP address is being rejected. Contact the upstream LDM administrator for more information. In the case of Unidata LDM's, your IP address needs to be associated with a `.edu` domain.
 
-###### My containers keep crashing
+##### My containers keep crashing
 Generally it is convenient to launch a container in detached mode (`docker-compose up -d`), however this means that you can't see the output of the container. If your container is crashing it can be convenient to launch the container normally (`docker-compose up`) and view the output (especially for the `processc`/`tfc` containers).
 
 Additionally it can be useful to look at the outputs of the containers themselves by attaching to the container process launched by `docker-compose`; you can do this via:
@@ -151,7 +151,14 @@ Additionally it can be useful to look at the outputs of the containers themselve
 docker attach [container_name]
 ```
 
-###### Stuff just doesn't work
+##### File Loads in Product Browser but doesn't Display
+If your data has been successfully transformed in your machine learning model and shows up in CAVE's Product Browser but nothing displays in the map view (except potentially a color bar) then you may need to clear CAVE's cache. This can be done by deleting the caveData directory (listed below, more information on this [here](http://unidata.github.io/awips2/install/common-problems/#removing-cavedata))
+
+- macOS: `/Users/[username]/Library/caveData`
+- Linux: `/home/[username]/caveData`
+- Windows: `C:\Users\[username]\caveData`
+
+##### Stuff just doesn't work
 File an issue (ideally with a link to your forked `awips-ml` repository). Useful places to look for logs within the `edexc` container are:
 - `awips2/edex/logs/edex-ingest-[product_type]-[date].log`
 - `awips2/ldm/logs/ldmd.log`
