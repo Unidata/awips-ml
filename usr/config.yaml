@@ -1,5 +1,5 @@
+variable_spec: Sectorized_CMI
 edex_container:
-  variable_spec: Sectorized_CMI
   rx_port: 6002
   tx_port: 6001
   rx_port_trigger: 6000
@@ -9,7 +9,6 @@ edex_container:
   pygcdm_server: processc
 
 process_container:
-  variable_spec: Sectorized_CMI
   rx_port: 6001
   tx_port: 6002
   rx_port_trigger: 7000

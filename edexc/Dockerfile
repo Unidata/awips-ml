@@ -54,8 +54,7 @@ COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_
 COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/common_static/base/styleRules/goesrCMI-ImageryStyleRules.xml
 
 # load in edex server stuff
-COPY /server/edex_container_server.py /server/edex_container_server.py
-COPY /server/trigger.py /server/trigger.py
+COPY /server/* /server/
 
 # copy in user defined stuff
 COPY /usr/* /server/

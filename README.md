@@ -118,7 +118,7 @@ because the underlying TensorFlow docker image in `tfc` needs a version number t
 This container does not have any configuration options associated with it.
 
 #### server
-This folder contains several configuration files/scripts used for handling data I/O from the `edexc`/EDEX server. Users do not need to modify the `edex_container_server.py` or `trigger.py` files directly as these can be controlled with `config.yaml`
+This folder contains several configuration files/scripts used for handling data I/O from the `edexc`/EDEX server. Users do not need to modify the `container_servers.py` or `trigger.py` files directly as these can be controlled with `config.yaml`
 
 ###### `config.yaml`
 The main parameter to change in this file is `variable_spec` - this is the `netCDF` variable that is passed between `edexc` and `processc` (and eventually `tfc`).
