@@ -77,18 +77,18 @@ VOLUME [ "/sys/fs/cgroup" ]
 RUN touch /etc/sysconfig/network
 
 # copy in custom service scripts (this will run on init)
+#    edex_start.service: starts edex server on startup
+#    listener_start.service: starts edex_container to handle pygcdm 
+#       trigger on startup
+#    logger_redirect.service: redirects listener_start output to PID 1 
+#       so viewable in docker logs
 RUN mkdir -p /etc/systemd/system/multi-user.target.wants/
 COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/edex_start.service
 COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/multi-user.target.wants/edex_start.service
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_start.service
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
-COPY /edexc/etc/systemd/logger_start.service /etc/systemd/system/logger_start.service
-COPY /edexc/etc/systemd/logger_start.service /etc/systemd/system/multi-user.target.wants/logger_start.service
-COPY /edexc/etc/systemd/listener_start.sh /scripts/listener_start.sh
-RUN chmod 755 /scripts/listener_start.sh
-COPY /edexc/etc/systemd/logger_start.sh /scripts/logger_start.sh
-RUN chmod 755 /scripts/logger_start.sh
-RUN mkdir /var/log/journal
+COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/logger_redirect.service
+COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/multi-user.target.wants/logger_redirect.service
 
 # cleanup awips_install script
 RUN rm awips_install.sh
