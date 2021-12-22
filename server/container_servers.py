@@ -214,9 +214,14 @@ class EDEXContainerServer(BaseServer):
             # we call via subprocess because qpid notifier is written for python 2 not 3
             # view output via sudo journalctl -fu listener_start.service
             # BONE, add error handling
+            # the way this works should be by checking returncode (nonzero = fails) then printing stderr otherwise say nothing
+            print("activating qpid")
             proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
                 EDEX_QPID_NOTIFICATION,
-                str(fp_ml)])
+                str(fp_ml)],
+                capture_output=True,
+#                text=True,
+                )
             print(proc_qpid)
             sys.stdout.flush()
             sys.stderr.flush()

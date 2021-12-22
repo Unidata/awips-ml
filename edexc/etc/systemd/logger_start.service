@@ -1,0 +1,10 @@
+[Unit]
+Description=Start edex server logger service
+After=listener_start.service
+
+[Service]
+Type=simple
+ExecStart=/bin/sh -c "journalctl -fu listener_start.service >> /proc/1/fd/1"
+
+[Install]
+WantedBy=multi-user.target

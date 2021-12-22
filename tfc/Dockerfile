@@ -4,7 +4,6 @@ MAINTAINER "Rio McMahon" <rmcmahon@ucar.edu>
 # create dummy model using simple script
 COPY ./tfc/etc/build_dummy_model.py /
 RUN python /build_dummy_model.py
-CMD tensorflow_model_server --port=8500 --rest_api_port=8501 --model_name=model --model_base_path=/models/model
 
 # alternative option is to copy in a pre-saved model
 # input path to specific model - tfc looks for model at specific path
