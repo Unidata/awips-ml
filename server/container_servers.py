@@ -19,12 +19,33 @@ from postproc import postproc
 EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
 EDEX_QPID_NOTIFICATION = "/awips2/ldm/dev/notifyAWIPS2-unidata.py"
 
-# define class stuff
 class BaseServer():
-    def __init__(self, fp_queue,
-            variable_spec,
-            **kwargs
-            ):
+    """
+    Base class for pygcdm file transfer between edexc and processc containers.
+
+    Description
+    ---------
+    This class is responsible for container agnostic network functionality. At a high
+    level the BaseServer has two components:
+    1) Trigger: Receives strings describing the filepath of the netCDF file to request
+            in other container. Places the received filepath into a queue which
+            triggers the responder/requester.
+    2) Responder/Requester: Activates when a filepath is placed into the queue and 
+            requests the file via pygcdm. pygcdm only sends data when requested which
+            is why it is implemented this way. The Requester makes the request and the
+            Responder responds to the request.
+
+    Attributes
+    ---------
+    fp_queue: 
+        queue item containing remote filepaths to request via pygcdm
+    variable_spec: 
+        netCDF variable to request via pygcdm
+    **kwargs: 
+        network variables (hostnames, ports, docker network) defined in /usr/config.yaml
+    """
+
+    def __init__(self, fp_queue, variable_spec, **kwargs):
 
         # unpack args
         self.variable_spec = variable_spec
@@ -39,7 +60,10 @@ class BaseServer():
         self.init_requester_server()
 
     def init_responder_server(self):
-        # define responder server
+        """
+        Initialize gRPC Responder (intakes Requests and returns Responses).
+        """
+
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
         grpc_server.add_GcdmServicer_to_server(Responder(), self.server)
         self.server.add_insecure_port(f'{self.pygcdm_client}:{self.tx_port}')
@@ -47,11 +71,18 @@ class BaseServer():
         self.server.start()
 
     def init_requester_server(self):
-        # define requester server
+        """
+        Initialize gRPC Requester (sends Requests and recieves Responses).
+        """
+
         self.request_handler = Requester(self.pygcdm_server, self.rx_port, self.variable_spec)
         print(f"making grpc requests on {self.pygcdm_server}:{self.rx_port}")
 
     async def trigger_listener(self):
+        """
+        Listen for trigger messages (strings with remote file location).
+        """
+
         trigger_server = await asyncio.start_server(
                 self.handle_trigger, self.host, self.rx_port_trigger)
         print(f"listening for file paths to request on {self.host}:{self.rx_port_trigger}...")
@@ -59,18 +90,30 @@ class BaseServer():
             await trigger_server.serve_forever()
 
     async def handle_trigger(self, reader, writer):
+        """
+        Append trigger messages to queue.
+        """
+
         data = await reader.read()
         message = data.decode()
         await self.fp_queue.put(message)
-    
-
 
 class ProcessContainerServer(BaseServer):
+    """
+    processc container server in charge of requesting data from edexc, sending to tfc,
+        and sending trigger message back to edexc.
+    """
     def __init__(self, fp_queue, variable_spec, **kwargs):
         super().__init__(fp_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
 
     async def pygcdm_requester(self):
+        """
+        Function that indefinitely reads filepaths from trigger queue, requests netCDF
+            file from edexc, sends file to tfc, and sends trigger message to edexc 
+            with tfc output.
+        """
+
         while True:
             file_loc = await self.fp_queue.get()
             print(f"trigger file to request: {file_loc}")
@@ -79,7 +122,7 @@ class ProcessContainerServer(BaseServer):
             print(f"netcdf file recieved")
 
             # first send netcdf file data to tf container
-            url = 'http://tfc:8501/v1/models/model:predict'  # bone expose this in API for namespace
+            url = f'{self.ml_model_location}:predict'
             request = self.netcdf_to_request(nc_file, self.variable_spec)
             response = await self.make_request(url, request)
 
@@ -95,7 +138,7 @@ class ProcessContainerServer(BaseServer):
                 fp_ml = fp.with_stem(fp.stem + '_ml')
                 nc_file.to_netcdf(fp_ml)  # this saves to path
 
-                # finally send back to edex
+                # finally send file location back to edex so it can request via pygcdm
                 reader, writer = await asyncio.open_connection(
                         self.pygcdm_server, self.tx_port_trigger)
                 writer.write(str(fp_ml).encode())
@@ -104,6 +147,9 @@ class ProcessContainerServer(BaseServer):
                 await writer.wait_closed()
 
     async def make_request(self, url, data):
+        """
+        Function that sends pre-processed data to tfc container and returns response (ML model output).
+        """
         async with aiohttp.ClientSession() as session:
             async with session.post(url, data=data) as response:
                 response_json = await response.json()
@@ -118,23 +164,38 @@ class ProcessContainerServer(BaseServer):
                     return 'error'
     
     def netcdf_to_request(self, nc, variable_spec):
-        # takes netcdf file data for variable spec, converts to numpy array, and sends via https to tensorflow
+        """
+        Function that converts netCDF file using user define pre-processing script and 
+            returns numpy array to send to tfc container.
+        """
+
         data = nc.variables[variable_spec][:].data
         data = data.reshape((1, *data.shape))
         data = preproc(data)
         return f'{{"instances" : {data.tolist()}}}'
 
     def response_to_netcdf(self, nc, response, variable_spec):
-        # takes returned numpy array and overwrites origin netcdf file
+        """
+        Function that converts tfc container ML output using user defined post-processing 
+            script and re-packs into netCDF file. 
+        """
+
         response = postproc(response)
         nc.variables[variable_spec][:] = response.squeeze()  # okay if this is redundant
 
 class EDEXContainerServer(BaseServer):
+    """
+    edexc container server in charge of requesting data from processc.
+    """
     def __init__(self, fp_queue, variable_spec, **kwargs):
         super().__init__(fp_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
 
     async def pygcdm_requester(self):
+        """
+        Function that indefinitely reads filepaths from trigger queue and requests 
+            data from processc
+        """
         while True:
             file_loc = await self.fp_queue.get()
             print(f"trigger file to request: {file_loc}")
@@ -159,16 +220,8 @@ class EDEXContainerServer(BaseServer):
             print(proc_qpid)
             sys.stdout.flush()
             sys.stderr.flush()
-#                proc_qpid = await asyncio.create_subprocess_shell(
-#                        f'{EDEX_PYTHON_LOCATION} \
-#                        {EDEX_QPID_NOTIFICATION} \
-#                        {str(fp)}')
-#                stdout, stderr = await proc_qpid.communicate()
 
-
-# define functions that run server
 async def run_server(configs, variable_spec, process_type):
-
     # start up appropriate server type
     if process_type == 'process_container':
         server = ProcessContainerServer(asyncio.Queue(), variable_spec, **configs)
@@ -185,8 +238,9 @@ async def run_server(configs, variable_spec, process_type):
 
 if __name__=="__main__":
     process_type = sys.argv[1]
-    with open("server/config.yaml") as file:  # BONE change this
+    with open("server/config.yaml") as file:
         config_dict = yaml.load(file, Loader=yaml.FullLoader)
+
     asyncio.run(run_server(config_dict[process_type], 
         config_dict['variable_spec'], 
         process_type))

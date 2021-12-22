@@ -16,3 +16,4 @@ process_container:
   host: processc
   pygcdm_client: processc
   pygcdm_server: edexc
+  ml_model_location: http://tfc:8501/v1/models/model
