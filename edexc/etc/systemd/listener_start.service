@@ -1,5 +1,5 @@
 [Unit]
-Description=Start edex server listener service
+Description=EDEX Listener Service: Start edex server listener service to respond to pygcdm requests
 
 [Service]
 Type=simple

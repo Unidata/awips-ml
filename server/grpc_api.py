@@ -12,11 +12,9 @@ class Responder(grpc_server.GcdmServicer):
         self.encoder = netCDF_Encode()
 
     def GetNetcdfHeader(self, request, context):
-        print('Header Requested')
         return self.encoder.generate_header_from_request(request)
 
     def GetNetcdfData(self, request, context):
-        print('Data Requested')
 
         # stream the data response
         data_response = [self.encoder.generate_data_from_request(request)]
@@ -34,7 +32,6 @@ class Requester():
                    ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH)]
         async with grpc.aio.insecure_channel(f'{self.host}:{self.port}', options=options) as channel:
             stub = grpc_server.GcdmStub(channel)
-            print(f"requesting data from {self.host}:{self.port}")
             request_msg = grpc_msg.HeaderRequest(location=loc)
             data_msg = grpc_msg.DataRequest(location=loc, variable_spec=self.variable_spec)
 

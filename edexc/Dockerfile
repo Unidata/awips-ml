@@ -53,8 +53,9 @@ COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_static/base/satellite/goesr/descriptions/Sectorized_CMI/CMIDataDescription_ML.xml
 COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/common_static/base/styleRules/goesrCMI-ImageryStyleRules.xml
 
-# load in edex server stuff
+# load in edex server stuff and trigger function
 COPY /server/* /server/
+COPY /edexc/etc/conf/trigger.py /server/trigger.py
 
 # copy in user defined stuff
 COPY /usr/* /server/
