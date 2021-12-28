@@ -208,8 +208,6 @@ class EDEXContainerServer(BaseServer):
         """
         while True:
             # get from queue 
-            print("bone getting from trigger queue")
-            print(f"bone trigger queue size {self.pygcdm_queue.qsize()}")
             file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
             print(f"current edexc queue size = {self.pygcdm_queue.qsize()}")
@@ -231,7 +229,6 @@ class EDEXContainerServer(BaseServer):
             # if EDEX has started ...
             if self.edex_started:
                 # ...and there are items in the queue then drain it first (do this once)
-                print("I break ehre bone")
                 while not self.edex_ingest_queue.empty():
                     print(f"EDEX started, ingesting backlog of queued files")
                     print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
@@ -245,15 +242,13 @@ class EDEXContainerServer(BaseServer):
             # else if EDEX not started then put into queue for ingestion
             else:
                 print(f"EDEX not started, adding file to ingest queue")
-                print("bone fuck")
                 print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
-
-                import time  # BONE
-                start = time.time()  #BONE
                 await self.edex_ingest_queue.put(fp_ml)
-                end = time.time()  # BONE
-                print(end - start) #BONE
 
+            # finally, flush output for lower latency docker logging
+            sys.stdout.flush()
+            sys.stderr.flush()
+    
     def edex_ingest(self, fp_ml):
         """
         A utility function that uses the subprocess module to call the EDEX ingestion script.
@@ -291,7 +286,6 @@ class EDEXContainerServer(BaseServer):
 
         # check if there is even an edex log available
         if any(re.search(match_string, file) for file in os.listdir(match_dir)):
-            print("bone match found")
             # if there is, then check for specific line
             filename = [file for file in os.listdir(match_dir) 
                     if re.search(match_string, file) is not None][0]  # will return one item list
