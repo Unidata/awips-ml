@@ -47,11 +47,11 @@ class BaseServer():
         network variables (hostnames, ports, docker network) defined in /usr/config.yaml
     """
 
-    def __init__(self, variable_spec, **kwargs):
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
 
         # unpack args
         self.variable_spec = variable_spec
-        self.pygcdm_queue = asyncio.Queue()
+        self.pygcdm_queue = pygcdm_queue
 
         # unpack kwargs
         for name, value in kwargs.items():
@@ -104,8 +104,8 @@ class ProcessContainerServer(BaseServer):
     processc container server in charge of requesting data from edexc, sending to tfc,
         and sending trigger message back to edexc.
     """
-    def __init__(self, variable_spec, **kwargs):
-        super().__init__(variable_spec, **kwargs)
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
+        super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
 
     async def pygcdm_requester(self):
@@ -192,8 +192,8 @@ class EDEXContainerServer(BaseServer):
     """
     edexc container server in charge of requesting data from processc.
     """
-    def __init__(self, variable_spec, **kwargs):
-        super().__init__(variable_spec, **kwargs)
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
+        super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
         self.edex_started = False
         self.edex_ingest_queue = asyncio.Queue()
@@ -212,13 +212,11 @@ class EDEXContainerServer(BaseServer):
 
             # start by copying old file to new on edex container
             fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
-            print(type(fp_ml), fp_ml)
             fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
             og_nc_file = xr.open_dataset(fp, mask_and_scale=False)
             og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
             nc_file = og_nc_file.rename_vars({self.variable_spec:self.variable_spec+'_ml'})
             nc_file.to_netcdf(fp_ml)
-            print(type(fp_ml), fp_ml)
 
             # check to see if EDEX is started
             if not self.edex_started:
@@ -232,6 +230,7 @@ class EDEXContainerServer(BaseServer):
                     print(f"EDEX started, ingesting backlog of queued files")
                     print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
                     ingest_fp = await self.edex_ingest_queue.get()
+                    print(f"Ingesting backlog file: {ingest_fp}")
                     self.edex_ingest(ingest_fp)
 
                 # else just ingest the new file
@@ -305,9 +304,9 @@ class EDEXContainerServer(BaseServer):
 async def run_server(configs, variable_spec, process_type):
     # start up appropriate server type
     if process_type == 'process_container':
-        server = ProcessContainerServer(variable_spec, **configs)
+        server = ProcessContainerServer(asyncio.Queue(), variable_spec, **configs)
     elif process_type == 'edex_container':
-        server = EDEXContainerServer(variable_spec, **configs)
+        server = EDEXContainerServer(asyncio.Queue(), variable_spec, **configs)
     else:
         try:
             assert process_type in ["process_container", "edex_container"]
