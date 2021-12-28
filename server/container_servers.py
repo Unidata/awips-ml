@@ -97,7 +97,6 @@ class BaseServer():
         """
         data = await reader.read()
         message = data.decode()
-        print(f"trigger message recieved {message}")
         await self.pygcdm_queue.put(message)
 
 class ProcessContainerServer(BaseServer):
@@ -118,7 +117,6 @@ class ProcessContainerServer(BaseServer):
 
         while True:
             file_loc = await self.pygcdm_queue.get()
-            print(f"trigger file to request: {file_loc}")
             print(f"current processc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
             print(f"netcdf file recieved from edexc")
@@ -152,7 +150,7 @@ class ProcessContainerServer(BaseServer):
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
-                print("sending trigger to edexc\n")
+                print("sending trigger to edexc")
 
     async def make_request(self, url, data):
         """
@@ -209,7 +207,6 @@ class EDEXContainerServer(BaseServer):
         while True:
             # get from queue 
             file_loc = await self.pygcdm_queue.get()
-            print(f"trigger file to request: {file_loc}")
             print(f"current edexc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
             print(f"netcdf file recieved")
@@ -228,6 +225,7 @@ class EDEXContainerServer(BaseServer):
 
             # if EDEX has started ...
             if self.edex_started:
+
                 # ...and there are items in the queue then drain it first (do this once)
                 while not self.edex_ingest_queue.empty():
                     print(f"EDEX started, ingesting backlog of queued files")
@@ -245,9 +243,8 @@ class EDEXContainerServer(BaseServer):
                 print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
                 await self.edex_ingest_queue.put(fp_ml)
 
-            # finally, flush output for lower latency docker logging
-            sys.stdout.flush()
-            sys.stderr.flush()
+            # finally flush buffer for logging in docker
+            self.flush_buffer()
     
     def edex_ingest(self, fp_ml):
         """
@@ -288,13 +285,21 @@ class EDEXContainerServer(BaseServer):
         if any(re.search(match_string, file) for file in os.listdir(match_dir)):
             # if there is, then check for specific line
             filename = [file for file in os.listdir(match_dir) 
-                    if re.search(match_string, file) is not None][0]  # will return one item list
+                    if re.match(match_string, file) is not None][0]  # will return one item list (must be re.match, not re.search)
             file = open(pathlib.Path(match_dir, filename), 'r')
             if re.search("EDEX ESB is now operational" , file.read()) is not None:
                 print("EDEX Status: OPERATIONAL")
                 self.edex_started = True
             else:
                 print("EDEX Status: NOT OPERATIONAL")
+
+    def flush_buffer(self):
+        """
+        Function that flushes print buffer to show up in edexc docker log
+        """
+        sys.stdout.flush()
+        sys.stderr.flush()
+
         
 async def run_server(configs, variable_spec, process_type):
     # start up appropriate server type
