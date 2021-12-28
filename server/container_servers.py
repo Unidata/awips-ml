@@ -122,8 +122,7 @@ class ProcessContainerServer(BaseServer):
             print(f"netcdf file recieved from edexc")
 
             # first send netcdf file data to tf container
-            #url = f'{self.ml_model_location}:predict'
-            url = 'http://tfc:8501/v1/models/model:predict'
+            url = f'{self.ml_model_location}:predict'
             request = self.netcdf_to_request(nc_file, self.variable_spec)
 
             print("sending netcdf file to tfc")
@@ -213,11 +212,13 @@ class EDEXContainerServer(BaseServer):
 
             # start by copying old file to new on edex container
             fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
+            print(type(fp_ml), fp_ml)
             fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
             og_nc_file = xr.open_dataset(fp, mask_and_scale=False)
             og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
             nc_file = og_nc_file.rename_vars({self.variable_spec:self.variable_spec+'_ml'})
             nc_file.to_netcdf(fp_ml)
+            print(type(fp_ml), fp_ml)
 
             # check to see if EDEX is started
             if not self.edex_started:
