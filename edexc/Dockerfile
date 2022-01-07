@@ -43,8 +43,22 @@ RUN . /home/awips/.bashrc \
     && pip install pyyaml \
     && pip install aiohttp 
 
-# load in config files
+# do this to invalidate build cache below this because of issue with EDEX not ingesting the same file
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache 
+
+# start doing stuff as root
 USER root
+
+# cleanup awips_install script
+RUN rm awips_install.sh
+
+# load in edex server stuff
+COPY /server/* /server/
+
+# copy in user defined stuff
+COPY /usr/* /server/
+
+# load in config files
 COPY /edexc/etc/conf/ldmd.conf /awips2/ldm/etc/ldmd.conf
 COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
 COPY /edexc/etc/conf/edexServiceList /etc/rc.d/init.d/edexServiceList
@@ -52,12 +66,6 @@ COPY /edexc/etc/conf/registry.xml /awips2/ldm/etc/registry.xml
 COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_static/base/satellite/goesr/descriptions/Sectorized_CMI/CMIDataDescription_ML.xml
 COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/common_static/base/styleRules/goesrCMI-ImageryStyleRules.xml
-
-# load in edex server stuff
-COPY /server/* /server/
-
-# copy in user defined stuff
-COPY /usr/* /server/
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker
@@ -89,6 +97,5 @@ COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_star
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
 COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/logger_redirect.service
 COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/multi-user.target.wants/logger_redirect.service
-
-# cleanup awips_install script
-RUN rm awips_install.sh
+COPY /edexc/etc/systemd/edex_start.sh /scripts/edex_start.sh
+RUN chmod 755 /scripts/edex_start.sh

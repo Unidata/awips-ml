@@ -1,5 +1,6 @@
 [Unit]
 Description=Start edex server listener service
+After=edex_start.service
 
 [Service]
 Type=simple
