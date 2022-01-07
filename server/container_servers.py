@@ -17,6 +17,9 @@ import netCDF4 as nc4
 import subprocess
 from preproc import preproc  # custom user pre/post-processing scripts
 from postproc import postproc
+from datetime import date
+import os
+import re
 
 EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
 EDEX_QPID_NOTIFICATION = "/awips2/ldm/dev/notifyAWIPS2-unidata.py"
@@ -278,16 +281,19 @@ class EDEXContainerServer(BaseServer):
         error. This function parses the EDEX logfiles for a string
         that indicates when EDEX has started fully.
         """
-        match_dir = "/awips2/edex/logs/"
-        match_string = "edex-ingest-2"  # the "2" is the century so this is fine until Y3K
 
-        # check if there is even an edex log available
-        if any(re.search(match_string, file) for file in os.listdir(match_dir)):
-            # if there is, then check for specific line
-            filename = [file for file in os.listdir(match_dir) 
-                    if re.match(match_string, file) is not None][0]  # will return one item list (must be re.match, not re.search)
-            file = open(pathlib.Path(match_dir, filename), 'r')
-            if re.search("EDEX ESB is now operational" , file.read()) is not None:
+        # check if edex log file has been created
+        d = date.today().strftime("%Y%m%d")
+        print("CHECKING EDEX STATUS")
+        if f'edex-ingest-{d}.log' in os.listdir('/awips2/edex/logs'):
+            edex_check = subprocess.run(['grep', 
+                'EDEX ESB is now operational', 
+                f'awips2/edex/logs/edex-ingest-{d}.log'], 
+                capture_output=True)
+
+
+            # then check if edex is operational
+            if edex_check.stdout.decode('utf-8') != '':
                 print("EDEX Status: OPERATIONAL")
                 self.edex_started = True
             else:
@@ -299,7 +305,7 @@ class EDEXContainerServer(BaseServer):
         """
         sys.stdout.flush()
         sys.stderr.flush()
-
+        
         
 async def run_server(configs, variable_spec, process_type):
     # start up appropriate server type
