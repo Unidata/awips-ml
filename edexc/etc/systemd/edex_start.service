@@ -1,5 +1,5 @@
 [Unit]
-Description=Start edex server
+Description=EDEX Start: Start edex server via "edex start" command
 
 [Service]
 Type=oneshot

@@ -8,6 +8,8 @@ from concurrent import futures
 import asyncio
 import aiohttp
 import sys
+import re
+import os
 import yaml
 import numpy as np
 import xarray as xr
@@ -40,7 +42,7 @@ class BaseServer():
 
     Attributes
     ---------
-    fp_queue: 
+    pygcdm_queue: 
         queue item containing remote filepaths to request via pygcdm
     variable_spec: 
         netCDF variable to request via pygcdm
@@ -48,11 +50,11 @@ class BaseServer():
         network variables (hostnames, ports, docker network) defined in /usr/config.yaml
     """
 
-    def __init__(self, fp_queue, variable_spec, **kwargs):
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
 
         # unpack args
         self.variable_spec = variable_spec
-        self.fp_queue = fp_queue
+        self.pygcdm_queue = pygcdm_queue
 
         # unpack kwargs
         for name, value in kwargs.items():
@@ -96,18 +98,17 @@ class BaseServer():
         """
         Append trigger messages to queue.
         """
-
         data = await reader.read()
         message = data.decode()
-        await self.fp_queue.put(message)
+        await self.pygcdm_queue.put(message)
 
 class ProcessContainerServer(BaseServer):
     """
     processc container server in charge of requesting data from edexc, sending to tfc,
         and sending trigger message back to edexc.
     """
-    def __init__(self, fp_queue, variable_spec, **kwargs):
-        super().__init__(fp_queue, variable_spec, **kwargs)
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
+        super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
 
     async def pygcdm_requester(self):
@@ -118,16 +119,18 @@ class ProcessContainerServer(BaseServer):
         """
 
         while True:
-            file_loc = await self.fp_queue.get()
-            print(f"trigger file to request: {file_loc}")
-            print(f"current queue size = {self.fp_queue.qsize()}")
+            file_loc = await self.pygcdm_queue.get()
+            print(f"current processc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
-            print(f"netcdf file recieved")
+            print(f"netcdf file recieved from edexc")
 
             # first send netcdf file data to tf container
             url = f'{self.ml_model_location}:predict'
             request = self.netcdf_to_request(nc_file, self.variable_spec)
+
+            print("sending netcdf file to tfc")
             response = await self.make_request(url, request)
+            print("received response file from tfc")
 
             if response == 'error':  # bone implement error handling
                 pass
@@ -142,12 +145,14 @@ class ProcessContainerServer(BaseServer):
                 nc_file.to_netcdf(fp_ml)  # this saves to path
 
                 # finally send file location back to edex so it can request via pygcdm
+                # this is the processc version of the trigger function called by EDEX on ingestion
                 reader, writer = await asyncio.open_connection(
                         self.pygcdm_server, self.tx_port_trigger)
                 writer.write(str(fp_ml).encode())
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
+                print("sending trigger to edexc")
 
     async def make_request(self, url, data):
         """
@@ -190,8 +195,8 @@ class EDEXContainerServer(BaseServer):
     """
     edexc container server in charge of requesting data from processc.
     """
-    def __init__(self, fp_queue, variable_spec, **kwargs):
-        super().__init__(fp_queue, variable_spec, **kwargs)
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
+        super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
         self.edex_started = False
         self.edex_ingest_queue = asyncio.Queue()
@@ -203,8 +208,8 @@ class EDEXContainerServer(BaseServer):
         """
         while True:
             # get from queue 
-            file_loc = await self.fp_queue.get()
-            print(f"current edexc queue size = {self.fp_queue.qsize()}")
+            file_loc = await self.pygcdm_queue.get()
+            print(f"current edexc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
             print(f"netcdf file recieved")
 
@@ -217,30 +222,29 @@ class EDEXContainerServer(BaseServer):
             nc_file.to_netcdf(fp_ml)
 
             # check to see if EDEX is started
-            self.edex_ingest(fp_ml)
             if not self.edex_started:
                 self.check_edex_started()
-#
-#            # if EDEX has started ...
-#            if self.edex_started:
-#
-#                # ...and there are items in the queue then drain it first (do this once)
-#                while not self.edex_ingest_queue.empty():
-#                    print(f"EDEX started, ingesting backlog of queued files")
-#                    print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
-#                    ingest_fp = await self.edex_ingest_queue.get()
-#                    print(f"Ingesting backlog file: {ingest_fp}")
-#                    self.edex_ingest(ingest_fp)
-#
-#                # else just ingest the new file
-#                print(f"Ingesting new file into EDEX")
-#                self.edex_ingest(fp_ml)
-#
-#            # else if EDEX not started then put into queue for ingestion
-#            else:
-#                print(f"EDEX not started, adding file to ingest queue")
-#                print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
-#                await self.edex_ingest_queue.put(fp_ml)
+
+            # if EDEX has started ...
+            if self.edex_started:
+
+                # ...and there are items in the queue then drain it first (do this once)
+                while not self.edex_ingest_queue.empty():
+                    print(f"EDEX started, ingesting backlog of queued files")
+                    print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
+                    ingest_fp = await self.edex_ingest_queue.get()
+                    print(f"Ingesting backlog file: {ingest_fp}")
+                    self.edex_ingest(ingest_fp)
+
+                # else just ingest the new file
+                print(f"Ingesting new file into EDEX")
+                self.edex_ingest(fp_ml)
+
+            # else if EDEX not started then put into queue for ingestion
+            else:
+                print(f"EDEX not started, adding file to ingest queue")
+                print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
+                await self.edex_ingest_queue.put(fp_ml)
 
             # finally flush buffer for logging in docker
             self.flush_buffer()
@@ -248,6 +252,7 @@ class EDEXContainerServer(BaseServer):
     def edex_ingest(self, fp_ml):
         """
         A utility function that uses the subprocess module to call the EDEX ingestion script.
+
         We use subprocess because the notifyAWIPS2-unidata.py script only works with python 2
         but the rest of this code needs to be run with python 3.
         """
@@ -268,6 +273,14 @@ class EDEXContainerServer(BaseServer):
             print(proc_qpid.stderr.decode("utf-8"))
 
     def check_edex_started(self):
+        """
+        Function that checks if EDEX is operational.
+
+        EDEX takes some time to start up after initial "edex start"
+        command and any calls to `IngestViaQPID()` will return an
+        error. This function parses the EDEX logfiles for a string
+        that indicates when EDEX has started fully.
+        """
 
         # check if edex log file has been created
         d = date.today().strftime("%Y%m%d")
@@ -281,8 +294,10 @@ class EDEXContainerServer(BaseServer):
 
             # then check if edex is operational
             if edex_check.stdout.decode('utf-8') != '':
-                print("\nEDEX Operational\n")
+                print("EDEX Status: OPERATIONAL")
                 self.edex_started = True
+            else:
+                print("EDEX Status: NOT OPERATIONAL")
 
     def flush_buffer(self):
         """
@@ -290,83 +305,8 @@ class EDEXContainerServer(BaseServer):
         """
         sys.stdout.flush()
         sys.stderr.flush()
-
         
-#class EDEXContainerServer(BaseServer):
-#    """
-#    edexc container server in charge of requesting data from processc.
-#    """
-#    def __init__(self, fp_queue, variable_spec, **kwargs):
-#        super().__init__(fp_queue, variable_spec, **kwargs)
-#        self.variable_spec = variable_spec
-#        self.edex_operational = False
-#
-#    async def pygcdm_requester(self):
-#        """
-#        Function that indefinitely reads filepaths from trigger queue and requests 
-#            data from processc
-#        """
-#        while True:
-#            file_loc = await self.fp_queue.get()
-#            print(f"trigger file to request: {file_loc}")
-#            print(f"current queue size = {self.fp_queue.qsize()}")
-#            nc_file = await self.request_handler.request_data(file_loc)
-#            print(f"netcdf file recieved")
-#
-#            # start by copying old file to new on edex container
-#            fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
-#            fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
-#            og_nc_file = xr.open_dataset(fp, mask_and_scale=False)
-#            og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
-#            nc_file = og_nc_file.rename_vars({self.variable_spec:self.variable_spec+'_ml'})
-#            nc_file.to_netcdf(fp_ml)
-#
-#
-#            self.notify_qpid(fp_ml)
-#            if not self.edex_operational:
-#                self.check_edex_operational()
-#
-#
-#            self.docker_log_flush()
-#
-#    def check_edex_operational(self):
-#
-#        # check if edex log file has been created
-#        d = date.today().strftime("%Y%m%d")
-#        print("CHECKING EDEX STATUS")
-#        if f'edex-ingest-{d}.log' in os.listdir('/awips2/edex/logs'):
-#            edex_check = subprocess.run(['grep', 
-#                'EDEX ESB is now operational', 
-#                f'awips2/edex/logs/edex-ingest-{d}.log'], 
-#                capture_output=True)
-#
-#            print(edex_check)
-#
-#            # then check if edex is operational
-#            if edex_check.stdout.decode('utf-8') != '':
-#                print("\nEDEX Operational\n")
-#                self.edex_operational = True
-#
-#
-#    def notify_qpid(self, fp_ml):
-#        # we call via subprocess because qpid notifier is written for python 2 not 3
-#        # view output via sudo journalctl -fu listener_start.service
-#        # BONE, add error handling
-#        # the way this works should be by checking returncode (nonzero = fails) then printing stderr otherwise say nothing
-#        print("activating qpid")
-#        proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
-#            EDEX_QPID_NOTIFICATION,
-#            str(fp_ml)],
-#            capture_output=True,
-##                text=True,
-#            )
-#        print(proc_qpid)
-#
-#    def docker_log_flush(self):
-#        sys.stdout.flush()
-#        sys.stderr.flush()
-
-
+        
 async def run_server(configs, variable_spec, process_type):
     # start up appropriate server type
     if process_type == 'process_container':
