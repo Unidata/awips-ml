@@ -1,0 +1,8 @@
+name: processc_env
+
+channels:
+  # list channels here
+  - default
+dependencies:
+  - python=3.9
+  # list dependencies here
