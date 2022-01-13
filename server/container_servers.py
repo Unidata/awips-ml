@@ -72,7 +72,7 @@ class BaseServer():
 
     def init_requester_server(self):
         """
-        Initialize gRPC Requester (sends Requests and recieves Responses).
+        Initialize gRPC Requester (sends Requests and receives Responses).
         """
 
         self.request_handler = Requester(self.pygcdm_server, self.rx_port, self.variable_spec)
@@ -119,14 +119,14 @@ class ProcessContainerServer(BaseServer):
             print(f"trigger file to request: {file_loc}")
             print(f"current queue size = {self.fp_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
-            print(f"netcdf file recieved")
 
             # first send netcdf file data to tf container
             url = f'{self.ml_model_location}:predict'
             request = self.netcdf_to_request(nc_file, self.variable_spec)
             response = await self.make_request(url, request)
 
-            if response == 'error':  # bone implement error handling
+            if response == 'error':  
+                # error handling is printed to log in make_request
                 pass
             else:
                 
@@ -157,8 +157,7 @@ class ProcessContainerServer(BaseServer):
                     return np.array(response_json['predictions'])
                 except KeyError:
                     # if missing 'predictions' key then model could not process sent data
-                    print("\nError in tfc response:")
-                    print(response_json, "\n")
+                    print(f"Error with tensorflow model:\n{response_json}")
                     return 'error'
                 except:
                     return 'error'
@@ -201,10 +200,9 @@ class EDEXContainerServer(BaseServer):
             print(f"trigger file to request: {file_loc}")
             print(f"current queue size = {self.fp_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
-            print(f"netcdf file recieved")
 
             # start by copying old file to new on edex container
-            fp_ml = pathlib.Path(file_loc)  # the recieved path will have _ml appended
+            fp_ml = pathlib.Path(file_loc)  # the received path will have _ml appended
             fp = fp_ml.with_stem(fp_ml.stem.replace('_ml', ''))
             og_nc_file = xr.open_dataset(fp, mask_and_scale=False)
             og_nc_file[self.variable_spec].data = nc_file[self.variable_spec].data
@@ -213,16 +211,17 @@ class EDEXContainerServer(BaseServer):
 
             # we call via subprocess because qpid notifier is written for python 2 not 3
             # view output via sudo journalctl -fu listener_start.service
-            # BONE, add error handling
             # the way this works should be by checking returncode (nonzero = fails) then printing stderr otherwise say nothing
-            print("activating qpid")
             proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
                 EDEX_QPID_NOTIFICATION,
                 str(fp_ml)],
                 capture_output=True,
-#                text=True,
                 )
-            print(proc_qpid)
+            if proc_qpid.returncode == 1:
+                print(f"Error ingesting file into EDEX. Error response:\n\
+                        {proc_qpid.stderr}")
+            else:
+                print(f"File successfully ingested into EDEX")
             sys.stdout.flush()
             sys.stderr.flush()
 

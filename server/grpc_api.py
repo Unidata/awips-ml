@@ -12,12 +12,9 @@ class Responder(grpc_server.GcdmServicer):
         self.encoder = netCDF_Encode()
 
     def GetNetcdfHeader(self, request, context):
-        print('Header Requested')
         return self.encoder.generate_header_from_request(request)
 
     def GetNetcdfData(self, request, context):
-        print('Data Requested')
-
         # stream the data response
         data_response = [self.encoder.generate_data_from_request(request)]
         for data in data_response:
