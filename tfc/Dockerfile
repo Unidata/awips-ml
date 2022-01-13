@@ -6,7 +6,7 @@ MAINTAINER "Rio McMahon" <rmcmahon@ucar.edu>
 #      to avoid repo overhead of storing model weights)
 #   2. saving in the model weights directly into the `/tfc/user_model/`
 #      folder. 
-# both options are presented below
+# both options are presented below. Uncomment/comment the option as desired.
 
 # OPTION 1
 # create dummy model using simple script
