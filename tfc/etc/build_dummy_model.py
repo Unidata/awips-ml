@@ -10,4 +10,4 @@ input1 = tf.keras.layers.Input(shape=(500,500))
 out = tf.keras.layers.multiply([input1, mult])
 model = tf.keras.models.Model(inputs=input1, outputs=out)
 
-model.save("/models/model/1")  # version number is mandatory for tf_server
+model.save("/models/model/1")  # this save path is mandatory for awips-ml without modifying the paths in the docker-compose.yml file

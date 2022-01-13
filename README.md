@@ -6,7 +6,11 @@ More information can be found in the [wiki](https://github.com/rmcsqrd/awips-ml/
 ![Example data being displayed](aux/example.png)
 
 ## Quickstart<a name="tc_quickstart"></a>
-These instructions assume that [Docker](https://docs.docker.com/get-docker/), [Docker Compose](https://docs.docker.com/compose/install/), and [CAVE](https://unidata.github.io/awips2/install/install-cave/) are installed (CAVE is required for viewing only). This git repository comes pre-loaded with example models so no configuration is required for demonstration purposes.
+These instructions assume that [Docker](https://docs.docker.com/get-docker/),
+[Docker Compose](https://docs.docker.com/compose/install/), and
+[CAVE](https://unidata.github.io/awips2/install/install-cave/) are installed
+(CAVE is required for viewing only). This git repository comes pre-loaded with
+a script to generate an example model so no configuration is required for demonstration purposes.
 
 First, start by cloning this repository, building the containers (this will take ~20 minutes depending on internet speed), and launching then containers.
 ```
