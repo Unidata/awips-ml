@@ -6,6 +6,7 @@ from pygcdm.protogen import gcdm_netcdf_pb2 as grpc_msg
 
 MAX_MESSAGE_LENGTH = 1000*1024*1024
 
+
 class Responder(grpc_server.GcdmServicer):
 
     def __init__(self):
@@ -20,6 +21,7 @@ class Responder(grpc_server.GcdmServicer):
         for data in data_response:
             yield(data)
 
+
 class Requester():
     def __init__(self, host, port, var_spec):
         self.host = host
@@ -29,15 +31,18 @@ class Requester():
     async def request_data(self, loc):
         options = [('grpc.max_receive_message_length', MAX_MESSAGE_LENGTH),
                    ('grpc.max_send_message_length', MAX_MESSAGE_LENGTH)]
-        async with grpc.aio.insecure_channel(f'{self.host}:{self.port}', options=options) as channel:
+        async with grpc.aio.insecure_channel(f'{self.host}:{self.port}',
+                options=options) as channel:
             stub = grpc_server.GcdmStub(channel)
             print(f"requesting data from {self.host}:{self.port}")
             request_msg = grpc_msg.HeaderRequest(location=loc)
-            data_msg = grpc_msg.DataRequest(location=loc, variable_spec=self.variable_spec)
+            data_msg = grpc_msg.DataRequest(location=loc,
+                    variable_spec=self.variable_spec)
 
-            # async unpack the streaming response - data_response is only one item
+            # async unpack the streaming response; data_response is one item
             header_response = await stub.GetNetcdfHeader(request_msg)
-            data_response = [data async for data in stub.GetNetcdfData(data_msg)][0]
+            data_response = [data async for data in
+                    stub.GetNetcdfData(data_msg)][0]
 
             return self.decode_response(header_response, data_response)
 
