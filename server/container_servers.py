@@ -231,8 +231,11 @@ class EDEXContainerServer(BaseServer):
                                        capture_output=True,
                                       )
             if proc_qpid.returncode == 1:
-                print(f"Error ingesting file into EDEX. Error response:\n\
-                        {proc_qpid.stderr}")
+                if "'external.dropbox' not found" in proc_qpid.stderr.decode('utf-8'):
+                    print(f"Error ingesting file into EDEX: EDEX not operational yet.")
+                else:
+                    print(f"Error ingesting file into EDEX. Error response:\n\
+                            {proc_qpid.stderr}")
             else:
                 print("File successfully ingested into EDEX")
             sys.stdout.flush()

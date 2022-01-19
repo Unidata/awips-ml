@@ -82,6 +82,7 @@ RUN touch /etc/sysconfig/network
 #       trigger on startup
 #    logger_redirect.service: redirects listener_start output to PID 1 
 #       so viewable in docker logs
+#    psql_* stuff: see https://github.com/rmcsqrd/awips-ml/wiki/awips-ml-design-document#known-issues
 RUN mkdir -p /etc/systemd/system/multi-user.target.wants/
 COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/edex_start.service
 COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/multi-user.target.wants/edex_start.service
