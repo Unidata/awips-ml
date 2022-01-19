@@ -22,7 +22,7 @@ change_duplicates() {
 }
 
 while true; do
-    #delete_duplicates
-    change_duplicates
+    #delete_duplicates 
+    change_duplicates # we prefer this one because we don't lose previously ingested data
     sleep 1
 done
