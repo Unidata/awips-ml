@@ -89,6 +89,9 @@ COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_star
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
 COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/logger_redirect.service
 COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/multi-user.target.wants/logger_redirect.service
+COPY /edexc/etc/systemd/psql_duplicate_fix.service /etc/systemd/system/multi-user.target.wants/psql_duplicate_fix.service
+COPY /edexc/etc/systemd/psql_duplicate_remover.sh /psql_duplicate_remover.sh
+RUN chmod 777 /psql_duplicate_remover.sh
 
 # cleanup awips_install script
 RUN rm awips_install.sh

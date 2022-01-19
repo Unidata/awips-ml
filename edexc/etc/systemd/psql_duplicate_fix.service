@@ -1,0 +1,10 @@
+[Unit]
+Description=Start psql overlap fix service
+After=edex_start.service
+
+[Service]
+Type=simple
+ExecStart=/bin/bash psql_duplicate_remover.sh
+
+[Install]
+WantedBy=multi-user.target
