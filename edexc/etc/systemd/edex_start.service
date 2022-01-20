@@ -3,7 +3,7 @@ Description=EDEX Start: Start edex server via "edex start" command
 
 [Service]
 Type=oneshot
-ExecStart=/scripts/edex_start.sh
+ExecStart=/usr/bin/edex start
 
 [Install]
 WantedBy=multi-user.target

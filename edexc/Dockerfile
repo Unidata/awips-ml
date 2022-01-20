@@ -43,9 +43,6 @@ RUN . /home/awips/.bashrc \
     && pip install pyyaml \
     && pip install aiohttp 
 
-# do this to invalidate build cache below this because of issue with EDEX not ingesting the same file
-ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache 
-
 # start doing stuff as root
 USER root
 
@@ -90,6 +87,7 @@ RUN touch /etc/sysconfig/network
 #       trigger on startup
 #    logger_redirect.service: redirects listener_start output to PID 1 
 #       so viewable in docker logs
+#    psql_* stuff: see https://github.com/rmcsqrd/awips-ml/wiki/awips-ml-design-document#known-issues
 RUN mkdir -p /etc/systemd/system/multi-user.target.wants/
 COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/edex_start.service
 COPY /edexc/etc/systemd/edex_start.service /etc/systemd/system/multi-user.target.wants/edex_start.service
@@ -97,5 +95,6 @@ COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/listener_star
 COPY /edexc/etc/systemd/listener_start.service /etc/systemd/system/multi-user.target.wants/listener_start.service
 COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/logger_redirect.service
 COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/multi-user.target.wants/logger_redirect.service
-COPY /edexc/etc/systemd/edex_start.sh /scripts/edex_start.sh
-RUN chmod 755 /scripts/edex_start.sh
+COPY /edexc/etc/systemd/psql_duplicate_fix.service /etc/systemd/system/multi-user.target.wants/psql_duplicate_fix.service
+COPY /edexc/etc/systemd/psql_duplicate_remover.sh /psql_duplicate_remover.sh
+RUN chmod 777 /psql_duplicate_remover.sh
