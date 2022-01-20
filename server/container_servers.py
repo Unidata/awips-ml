@@ -121,6 +121,7 @@ class ProcessContainerServer(BaseServer):
         """
 
         while True:
+            # get from queue
             file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
             print(f"current processc queue size = {self.pygcdm_queue.qsize()}")
@@ -273,8 +274,14 @@ class EDEXContainerServer(BaseServer):
             )
 
         # finally process the output
-        if proc_qpid.returncode != 0:
-            print(proc_qpid.stderr.decode("utf-8"))
+        if proc_qpid.returncode == 1:
+          if "'external.dropbox' not found" in proc_qpid.stderr.decode('utf-8'):
+            print(f"Error ingesting file into EDEX: EDEX not operational yet.")
+          else:
+            print(f"Error ingesting file into EDEX. Error response:\n\
+              {proc_qpid.stderr}")
+        else:
+          print("File successfully ingested into EDEX")
 
     def check_edex_started(self):
         """
