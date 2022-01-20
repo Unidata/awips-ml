@@ -46,15 +46,6 @@ RUN . /home/awips/.bashrc \
 # start doing stuff as root
 USER root
 
-# cleanup awips_install script
-RUN rm awips_install.sh
-
-# load in edex server stuff
-COPY /server/* /server/
-
-# copy in user defined stuff
-COPY /usr/* /server/
-
 # load in config files
 COPY /edexc/etc/conf/ldmd.conf /awips2/ldm/etc/ldmd.conf
 COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
@@ -63,6 +54,12 @@ COPY /edexc/etc/conf/registry.xml /awips2/ldm/etc/registry.xml
 COPY /edexc/etc/conf/pqact.conf /awips2/ldm/etc/pqact.conf
 COPY /edexc/etc/conf/CMIDataDescription_ML.xml /awips2/edex/data/utility/common_static/base/satellite/goesr/descriptions/Sectorized_CMI/CMIDataDescription_ML.xml
 COPY /edexc/etc/conf/goesrCMI-ImageryStyleRules.xml /awips2/edex/data/utility/common_static/base/styleRules/goesrCMI-ImageryStyleRules.xml
+
+# load in edex server stuff
+COPY /server/* /server/
+
+# copy in user defined stuff
+COPY /usr/* /server/
 
 # remove some systemd stuff per https://hub.docker.com/_/centos/
 ENV container docker
@@ -98,3 +95,6 @@ COPY /edexc/etc/systemd/logger_redirect.service /etc/systemd/system/multi-user.t
 COPY /edexc/etc/systemd/psql_duplicate_fix.service /etc/systemd/system/multi-user.target.wants/psql_duplicate_fix.service
 COPY /edexc/etc/systemd/psql_duplicate_remover.sh /psql_duplicate_remover.sh
 RUN chmod 777 /psql_duplicate_remover.sh
+
+# cleanup awips_install script
+RUN rm awips_install.sh
