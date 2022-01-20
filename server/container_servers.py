@@ -238,8 +238,15 @@ class EDEXContainerServer(BaseServer):
                             {proc_qpid.stderr}")
             else:
                 print("File successfully ingested into EDEX")
-            sys.stdout.flush()
-            sys.stderr.flush()
+
+            self.flush_buffer()
+
+    def flush_buffer(self):
+        """
+        Function that flushes print buffer to show up in edexc docker log
+        """
+        sys.stdout.flush()
+        sys.stderr.flush()
 
 
 async def run_server(configs, variable_spec, process_type):
