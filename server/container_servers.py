@@ -211,6 +211,7 @@ class EDEXContainerServer(BaseServer):
         while True:
             # get from queue 
             file_loc = await self.pygcdm_queue.get()
+            print(f"trigger file to request {file_loc}")
             print(f"current edexc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
 
