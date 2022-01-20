@@ -48,7 +48,7 @@
     <max-clients>256</max-clients>
     <max-latency>3600</max-latency>
     <port>388</port>
-    <time-offset>0</time-offset>
+    <time-offset>3600</time-offset>
     <enable-anti-DOS>TRUE</enable-anti-DOS>
   </server>
   <surf-queue>

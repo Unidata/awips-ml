@@ -6,12 +6,14 @@ from concurrent import futures
 import asyncio
 import aiohttp
 import sys
+import os
 import yaml
 import numpy as np
 import xarray as xr
 import subprocess
 from preproc import preproc  # custom user pre/post-processing scripts
 from postproc import postproc
+from datetime import date
 
 EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
 EDEX_QPID_NOTIFICATION = "/awips2/ldm/dev/notifyAWIPS2-unidata.py"
@@ -198,6 +200,8 @@ class EDEXContainerServer(BaseServer):
     def __init__(self, pygcdm_queue, variable_spec, **kwargs):
         super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
+        self.edex_started = False
+        self.edex_ingest_queue = asyncio.Queue()
 
     async def pygcdm_requester(self):
         """
@@ -205,6 +209,7 @@ class EDEXContainerServer(BaseServer):
         requests data from processc
         """
         while True:
+            # get from queue 
             file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
             print(f"current edexc queue size = {self.pygcdm_queue.qsize()}")
@@ -221,26 +226,89 @@ class EDEXContainerServer(BaseServer):
                     )
             nc_file.to_netcdf(fp_ml)
 
-            # call via subprocess because qpid notifier is written for python 2
-            # view output via sudo journalctl -fu listener_start.service
-            # the way this works should be by checking returncode
-            #   (nonzero = fails) then printing stderr otherwise say nothing
-            proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
-                                        EDEX_QPID_NOTIFICATION,
-                                        str(fp_ml)
-                                       ],
-                                       capture_output=True,
-                                      )
-            if proc_qpid.returncode == 1:
-                if "'external.dropbox' not found" in proc_qpid.stderr.decode('utf-8'):
-                    print(f"Error ingesting file into EDEX: EDEX not operational yet.")
-                else:
-                    print(f"Error ingesting file into EDEX. Error response:\n\
-                            {proc_qpid.stderr}")
-            else:
-                print("File successfully ingested into EDEX")
+            # check to see if EDEX is started
+            if not self.edex_started:
+                self.check_edex_started()
 
+            # if EDEX has started ...
+            if self.edex_started:
+
+                # ...and there are items in the queue then drain it first (do this once)
+                while not self.edex_ingest_queue.empty():
+                    print(f"EDEX started, ingesting backlog of queued files")
+                    print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
+                    ingest_fp = await self.edex_ingest_queue.get()
+                    print(f"Ingesting backlog file: {ingest_fp}")
+                    self.edex_ingest(ingest_fp)
+
+                # else just ingest the new file
+                print(f"Ingesting new file into EDEX")
+                self.edex_ingest(fp_ml)
+
+            # else if EDEX not started then put into queue for ingestion
+            else:
+                print(f"EDEX not started, adding file to ingest queue")
+                print(f"Current ingestion backlog queue size = {self.edex_ingest_queue.qsize()}")
+                await self.edex_ingest_queue.put(fp_ml)
+
+            # finally flush buffer for logging in docker
             self.flush_buffer()
+    
+    def edex_ingest(self, fp_ml):
+        """
+        A utility function that uses the subprocess module to call the EDEX ingestion script.
+
+        We use subprocess because the notifyAWIPS2-unidata.py script only works with python 2
+        but the rest of this code needs to be run with python 3.
+        """
+
+        # first make sure we're dealing with strings
+        if not isinstance(fp_ml, str):
+            fp_ml = str(fp_ml)
+        
+        # then, notify qpid of new file
+        proc_qpid = subprocess.run([EDEX_PYTHON_LOCATION,
+            EDEX_QPID_NOTIFICATION,
+            fp_ml],
+            capture_output=True,
+            )
+
+        # finally process the output
+        if proc_qpid.returncode == 1:
+          if "'external.dropbox' not found" in proc_qpid.stderr.decode('utf-8'):
+            print(f"Error ingesting file into EDEX: EDEX not operational yet.")
+          else:
+            print(f"Error ingesting file into EDEX. Error response:\n\
+              {proc_qpid.stderr}")
+        else:
+          print("File successfully ingested into EDEX")
+
+    def check_edex_started(self):
+        """
+        Function that checks if EDEX is operational.
+
+        EDEX takes some time to start up after initial "edex start"
+        command and any calls to `IngestViaQPID()` will return an
+        error. This function parses the EDEX logfiles for a string
+        that indicates when EDEX has started fully.
+        """
+
+        # check if edex log file has been created
+        d = date.today().strftime("%Y%m%d")
+        print("CHECKING EDEX STATUS")
+        if f'edex-ingest-{d}.log' in os.listdir('/awips2/edex/logs'):
+            edex_check = subprocess.run(['grep', 
+                'EDEX ESB is now operational', 
+                f'awips2/edex/logs/edex-ingest-{d}.log'], 
+                capture_output=True)
+
+
+            # then check if edex is operational
+            if edex_check.stdout.decode('utf-8') != '':
+                print("EDEX Status: OPERATIONAL")
+                self.edex_started = True
+            else:
+                print("EDEX Status: NOT OPERATIONAL")
 
     def flush_buffer(self):
         """
