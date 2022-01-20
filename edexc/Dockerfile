@@ -43,8 +43,10 @@ RUN . /home/awips/.bashrc \
     && pip install pyyaml \
     && pip install aiohttp 
 
-# load in config files
+# start doing stuff as root
 USER root
+
+# load in config files
 COPY /edexc/etc/conf/ldmd.conf /awips2/ldm/etc/ldmd.conf
 COPY /edexc/etc/conf/setup.env /awips2/edex/bin/setup.env
 COPY /edexc/etc/conf/edexServiceList /etc/rc.d/init.d/edexServiceList
