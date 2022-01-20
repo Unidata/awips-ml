@@ -3,6 +3,8 @@ awips-ml allows users to visualize [TensorFlow](https://www.tensorflow.org/) mac
 
 More information can be found in the [wiki](https://github.com/rmcsqrd/awips-ml/wiki).
 
+awips-ml is tested for Docker version 3.5.2. Later versions of docker may not work due to [this](https://github.com/rmcsqrd/awips-ml/wiki/awips-ml-usage-guide#docker-compose-error-failed-to-mount-cgroup-at-sysfscgroupsystemd-operation-not-permitted).
+
 ![Example data being displayed](aux/example.png)
 
 ## Quickstart<a name="tc_quickstart"></a>
