@@ -1,5 +1,5 @@
 [Unit]
-Description=redirect edex server log output
+Description=Logger Redirect: redirect listener_server log output for display in docker logs
 After=listener_start.service
 
 [Service]

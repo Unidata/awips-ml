@@ -35,7 +35,7 @@ class BaseServer():
 
     Attributes
     ---------
-    fp_queue:
+    pygcdm_queue:
         queue item containing remote filepaths to request via pygcdm
     variable_spec:
         netCDF variable to request via pygcdm
@@ -44,11 +44,11 @@ class BaseServer():
         /usr/config.yaml
     """
 
-    def __init__(self, fp_queue, variable_spec, **kwargs):
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
 
         # unpack args
         self.variable_spec = variable_spec
-        self.fp_queue = fp_queue
+        self.pygcdm_queue = pygcdm_queue
 
         # unpack kwargs
         for name, value in kwargs.items():
@@ -99,7 +99,7 @@ class BaseServer():
 
         data = await reader.read()
         message = data.decode()
-        await self.fp_queue.put(message)
+        await self.pygcdm_queue.put(message)
 
 
 class ProcessContainerServer(BaseServer):
@@ -107,8 +107,8 @@ class ProcessContainerServer(BaseServer):
     processc container server in charge of requesting data from edexc,
     sending to tfc, and sending trigger message back to edexc.
     """
-    def __init__(self, fp_queue, variable_spec, **kwargs):
-        super().__init__(fp_queue, variable_spec, **kwargs)
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
+        super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
 
     async def pygcdm_requester(self):
@@ -119,9 +119,9 @@ class ProcessContainerServer(BaseServer):
         """
 
         while True:
-            file_loc = await self.fp_queue.get()
+            file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
-            print(f"current queue size = {self.fp_queue.qsize()}")
+            print(f"current queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
 
             # first send netcdf file data to tf container
@@ -194,8 +194,8 @@ class EDEXContainerServer(BaseServer):
     """
     edexc container server in charge of requesting data from processc.
     """
-    def __init__(self, fp_queue, variable_spec, **kwargs):
-        super().__init__(fp_queue, variable_spec, **kwargs)
+    def __init__(self, pygcdm_queue, variable_spec, **kwargs):
+        super().__init__(pygcdm_queue, variable_spec, **kwargs)
         self.variable_spec = variable_spec
 
     async def pygcdm_requester(self):
@@ -204,9 +204,9 @@ class EDEXContainerServer(BaseServer):
         requests data from processc
         """
         while True:
-            file_loc = await self.fp_queue.get()
+            file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
-            print(f"current queue size = {self.fp_queue.qsize()}")
+            print(f"current queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
 
             # start by copying old file to new on edex container
