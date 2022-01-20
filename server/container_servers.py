@@ -248,7 +248,6 @@ class EDEXContainerServer(BaseServer):
         sys.stdout.flush()
         sys.stderr.flush()
 
-
 async def run_server(configs, variable_spec, process_type):
     # start up appropriate server type
     if process_type == 'process_container':
