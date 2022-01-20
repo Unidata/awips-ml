@@ -119,6 +119,7 @@ class ProcessContainerServer(BaseServer):
         """
 
         while True:
+            # get from queue
             file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
             print(f"current processc queue size = {self.pygcdm_queue.qsize()}")
