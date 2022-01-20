@@ -15,8 +15,6 @@ import subprocess
 from preproc import preproc  # custom user pre/post-processing scripts
 from postproc import postproc
 from datetime import date
-import os
-import re
 
 EDEX_PYTHON_LOCATION = "/awips2/python/bin/python"
 EDEX_QPID_NOTIFICATION = "/awips2/ldm/dev/notifyAWIPS2-unidata.py"
@@ -40,7 +38,7 @@ class BaseServer():
 
     Attributes
     ---------
-    pygcdm_queue: 
+    pygcdm_queue:
         queue item containing remote filepaths to request via pygcdm
     variable_spec:
         netCDF variable to request via pygcdm
@@ -124,6 +122,7 @@ class ProcessContainerServer(BaseServer):
 
         while True:
             file_loc = await self.pygcdm_queue.get()
+            print(f"trigger file to request: {file_loc}")
             print(f"current processc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
 
@@ -131,9 +130,7 @@ class ProcessContainerServer(BaseServer):
             url = f'{self.ml_model_location}:predict'
             request = self.netcdf_to_request(nc_file, self.variable_spec)
 
-            print("sending netcdf file to tfc")
             response = await self.make_request(url, request)
-            print("received response file from tfc")
 
             if response == 'error':
                 # error handling is printed to log in make_request
@@ -155,7 +152,6 @@ class ProcessContainerServer(BaseServer):
                 await writer.drain()
                 writer.close()
                 await writer.wait_closed()
-                print("sending trigger to edexc")
 
     async def make_request(self, url, data):
         """
