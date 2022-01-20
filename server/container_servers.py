@@ -121,7 +121,7 @@ class ProcessContainerServer(BaseServer):
         while True:
             file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
-            print(f"current queue size = {self.pygcdm_queue.qsize()}")
+            print(f"current processc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
 
             # first send netcdf file data to tf container
@@ -206,7 +206,7 @@ class EDEXContainerServer(BaseServer):
         while True:
             file_loc = await self.pygcdm_queue.get()
             print(f"trigger file to request: {file_loc}")
-            print(f"current queue size = {self.pygcdm_queue.qsize()}")
+            print(f"current edexc queue size = {self.pygcdm_queue.qsize()}")
             nc_file = await self.request_handler.request_data(file_loc)
 
             # start by copying old file to new on edex container
