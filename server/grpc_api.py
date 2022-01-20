@@ -34,7 +34,6 @@ class Requester():
         async with grpc.aio.insecure_channel(f'{self.host}:{self.port}',
                 options=options) as channel:
             stub = grpc_server.GcdmStub(channel)
-            print(f"requesting data from {self.host}:{self.port}")
             request_msg = grpc_msg.HeaderRequest(location=loc)
             data_msg = grpc_msg.DataRequest(location=loc,
                     variable_spec=self.variable_spec)
