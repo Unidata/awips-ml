@@ -99,6 +99,7 @@ class BaseServer():
         """
         Append trigger messages to queue.
         """
+
         data = await reader.read()
         message = data.decode()
         await self.pygcdm_queue.put(message)
@@ -129,7 +130,6 @@ class ProcessContainerServer(BaseServer):
             # first send netcdf file data to tf container
             url = f'{self.ml_model_location}:predict'
             request = self.netcdf_to_request(nc_file, self.variable_spec)
-
             response = await self.make_request(url, request)
 
             if response == 'error':
